@@ -93,3 +93,27 @@ jobs:
               }
               Write-Host "$file : syntaxe correcte"
           }
+
+  # Le seul check a exiger dans la protection de main. Les jobs ci-dessus
+  # portent des noms engendres par la matrice ("ubuntu-latest / Python 3.8"...)
+  # qui changent des qu'on touche a la liste des cibles : les citer un a un
+  # dans le ruleset condamnerait toute PR au premier leg renomme, et un leg
+  # retire y resterait exige a jamais, donc jamais satisfait. Celui-ci ne bouge
+  # pas et resume les autres.
+  ci-ok:
+    name: CI ok
+    # Sans always(), l'echec ou l'annulation d'un job requis sauterait ce job
+    # au lieu de le faire rougir : la PR attendrait alors un verdict qui ne
+    # viendrait jamais.
+    if: always()
+    needs: [tests, scripts]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tous les jobs sont verts
+        # 'success' est le seul resultat acceptable : 'skipped' et 'cancelled'
+        # disent qu'on n'a rien eprouve, pas que tout va bien.
+        run: |
+          [ "${{ needs.tests.result }}" = "success" ] \
+            || { echo "tests : ${{ needs.tests.result }}"; exit 1; }
+          [ "${{ needs.scripts.result }}" = "success" ] \
+            || { echo "scripts : ${{ needs.scripts.result }}"; exit 1; }
