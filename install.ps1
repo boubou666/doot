@@ -150,6 +150,36 @@ New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
 Copy-Item (Join-Path $Src 'doot') -Destination (Join-Path $AppDir 'doot') -Recurse -Force
 Write-Item "code        : $AppDir\doot"
 
+$EngineVersion = '0.2.0'
+$EngineUrl = "https://github.com/boubou666/desktop-overlay/releases/download/v$EngineVersion/desktop_overlay-$EngineVersion-py3-none-any.whl"
+$EngineSha256 = '9ac3676603f73f30bf2d756040cdc35faed9fd5977a6ebf53b5eafd0a5db4f34'
+$EngineInstaller = @"
+import hashlib
+import io
+import sys
+import urllib.request
+import zipfile
+
+url, expected, target = sys.argv[1:]
+with urllib.request.urlopen(url, timeout=30) as response:
+    wheel = response.read()
+actual = hashlib.sha256(wheel).hexdigest()
+if actual != expected:
+    raise SystemExit(
+        "desktop-overlay: SHA-256 inattendu ({} au lieu de {})".format(
+            actual, expected
+        )
+    )
+with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
+    archive.extractall(target)
+"@
+& $python -c $EngineInstaller $EngineUrl $EngineSha256 $AppDir
+if ($LASTEXITCODE -ne 0) {
+    Write-Item "Echec de l'installation de desktop-overlay $EngineVersion."
+    exit 1
+}
+Write-Item "moteur      : desktop-overlay $EngineVersion"
+
 $cmdPath = Join-Path $BinDir 'doot.cmd'
 @"
 @echo off

@@ -40,7 +40,7 @@ pkgdesc="Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er se
 arch=('any')
 url="https://github.com/boubou666/doot"
 license=('MIT')
-depends=('python' 'tk')
+depends=('python' 'tk' 'python-desktop-overlay>=0.2.0')
 
 # La commande s'installe en /usr/bin/doot, que le paquet AUR « doot » installe
 # aussi. Les deux ne peuvent pas cohabiter et pacman le dira proprement plutot

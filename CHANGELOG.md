@@ -12,6 +12,23 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Modifié
+- L'énumération des écrans, la géométrie partagée et la préparation des
+  fenêtres tkinter viennent désormais de desktop-overlay 0.2.0. Doot garde
+  son choix aléatoire d'écran, ses textes français et ses méthodes historiques
+  derrière un adaptateur mince.
+- Les installeurs autonomes vérifient le wheel 0.2.0 par SHA-256 ; la recette
+  Arch dépend du paquet partagé python-desktop-overlay.
+- Les nouvelles versions sont distribuées par GitHub Releases : le paquet
+  référence le wheel 0.2.0 du moteur et son SHA-256, sans compte PyPI pour le
+  moteur.
+
+### Corrigé
+- Sous Windows, les styles click-through et sans activation sont posés avant
+  le premier affichage de la fenêtre.
+- Les coordonnées tkinter négatives utilisent maintenant une géométrie signée
+  valide pour les écrans placés à gauche ou au-dessus de l'écran principal.
+
 ## [1.7.2] - 2026-09-12
 
 ### Corrigé

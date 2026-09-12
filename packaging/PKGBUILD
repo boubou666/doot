@@ -16,7 +16,7 @@ pkgdesc="Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er se
 arch=('any')
 url="https://github.com/boubou666/doot"
 license=('MIT')
-depends=('python' 'tk')
+depends=('python' 'tk' 'python-desktop-overlay>=0.2.0')
 optdepends=(
     'libpulse: sortie audio native des wav, et lecture via paplay'
     'alsa-lib: sortie audio native des wav en second recours'

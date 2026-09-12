@@ -77,42 +77,13 @@ apparitions de 2 à 8 heures, et `--no-sound` le rend muet.
 
 ## Installation
 
-### Depuis PyPI, sur les trois systèmes
+### Depuis GitHub, sur les trois systèmes
 
-Le paquet s'appelle **`spooky-doot`**, parce que `doot` était déjà pris. La
-commande, elle, reste `doot`.
-
-Pour voir le squelette tout de suite, sans rien installer :
-
-```bash
-uvx --from spooky-doot doot --once --ignore-season
-```
-
-Un doot, et rien d'installé. Le paquet passe quand même par le cache de uv, que
-`uv cache clean` vide. `--ignore-season` force l'apparition : sans lui, doot
-répond qu'il est en congé jusqu'au 1er septembre et ne montre rien.
-
-Pour l'installer pour de bon :
-
-```bash
-uv tool install spooky-doot
-```
-
-**Il te faut [uv](https://docs.astral.sh/uv/)** pour ces deux commandes : un
-binaire autonome, qui ne réclame rien d'autre que lui-même, pas même un Python.
-Ta distribution l'a peut-être déjà — il est dans `extra` chez Arch et dans les
-dépôts Fedora. Sinon `brew install uv` sur macOS,
-`winget install --id=astral-sh.uv -e` sur Windows, ou
-`curl -LsSf https://astral.sh/uv/install.sh | sh` sur Linux et macOS.
-
-Pas envie d'ajouter uv ? `pipx install spooky-doot` fait la même chose si tu as
-déjà pipx, la différence étant que pipx a besoin d'un Python pour tourner. Et
-`pip install spooky-doot` marche aussi, même si un environnement dédié vaut
-mieux pour un outil qu'on lance.
-
-Ça installe la commande et les médias, mais **pas** le démarrage automatique.
-Pour que le squelette revienne tout seul à chaque session, il faut les scripts
-ci-dessous — ou lancer `doot` toi-même.
+Les versions qui utilisent le moteur partagé sont distribuées par les
+[releases GitHub](https://github.com/boubou666/doot/releases). Les scripts
+ci-dessous installent l'application et le wheel vérifié du moteur, puis
+configurent le démarrage automatique. Les anciennes versions déjà publiées sur
+PyPI restent disponibles, mais ne reçoivent pas cette intégration.
 
 ### Linux (dont Arch) et macOS
 
@@ -147,6 +118,8 @@ ALSA, sans passer par un lecteur. `doot --status` dit laquelle est utilisée.
 
 ### Arch Linux, via un paquet
 
+Installe d'abord [python-desktop-overlay](https://github.com/boubou666/desktop-overlay/tree/main/packaging), puis :
+
 ```bash
 cd packaging
 makepkg -si
@@ -177,7 +150,7 @@ Démarrage. Aucun droit administrateur, aucun composant système modifié.
 ### Sans installer (test rapide)
 
 ```bash
-python3 -m doot --once --ignore-season
+uv run --no-project --with "desktop-overlay @ https://github.com/boubou666/desktop-overlay/releases/download/v0.2.0/desktop_overlay-0.2.0-py3-none-any.whl#sha256=9ac3676603f73f30bf2d756040cdc35faed9fd5977a6ebf53b5eafd0a5db4f34" python -m doot --once --ignore-season
 ```
 
 ## Versions
