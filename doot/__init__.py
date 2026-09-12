@@ -3,5 +3,5 @@
 Actif uniquement pendant la saison spooky : du 1er septembre au 31 octobre.
 """
 
-__version__ = "1.7.0"
+__version__ = "1.7.1"
 __all__ = ["__version__"]
