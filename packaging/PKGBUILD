@@ -10,7 +10,7 @@
 # voir la note sur sha256sums plus bas.
 
 pkgname=doot
-pkgver=1.7.1
+pkgver=1.7.2
 pkgrel=1
 pkgdesc="Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er septembre au 31 octobre"
 arch=('any')
