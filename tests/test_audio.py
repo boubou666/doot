@@ -11,6 +11,7 @@ from __future__ import annotations
 import array
 import struct
 import tempfile
+import threading
 import unittest
 import wave
 from pathlib import Path
@@ -159,6 +160,61 @@ class Arret(unittest.TestCase):
         self.assertFalse(lecture._arret.is_set())
         lecture.stop()
         self.assertTrue(lecture._arret.is_set())
+
+
+class AttenteALaSortie(unittest.TestCase):
+    """`_laisse_finir` partage `_en_cours` avec les fils de lecture.
+
+    Chacun s'en retire sous `_verrou` quand il finit. Le cliche de l'ensemble
+    doit donc se prendre sous ce verrou, et l'attente se faire sans lui : sinon
+    le fil qu'on attend ne peut plus se retirer, et on attend le delai entier.
+    """
+
+    def setUp(self):
+        self.sauvegarde = audio._en_cours
+        self.addCleanup(setattr, audio, "_en_cours", self.sauvegarde)
+
+    def test_le_cliche_se_prend_sous_verrou(self):
+        class Surveille(set):
+            def __iter__(self_):
+                self.assertTrue(audio._verrou.locked(),
+                                "_en_cours parcouru sans _verrou")
+                return super().__iter__()
+
+        audio._en_cours = Surveille([audio.Lecture()])
+        audio._laisse_finir(delai=0.01)
+
+    def test_l_attente_se_fait_hors_verrou(self):
+        libre = []
+
+        class Temoin(audio.Lecture):
+            __slots__ = ()
+
+            def join(self_, timeout=None):
+                # Un fil de lecture qui finit prend ce verrou : il doit
+                # pouvoir le faire pendant qu'on l'attend.
+                pris = audio._verrou.acquire(blocking=False)
+                libre.append(pris)
+                if pris:
+                    audio._verrou.release()
+
+        audio._en_cours = {Temoin()}
+        audio._laisse_finir(delai=0.01)
+        self.assertEqual(libre, [True])
+
+    def test_un_fil_qui_finit_pendant_l_attente_est_attendu(self):
+        lecture = audio.Lecture()
+        audio._en_cours = {lecture}
+
+        def fil():
+            with audio._verrou:
+                audio._en_cours.discard(lecture)
+
+        lecture._fil = threading.Thread(target=fil)
+        lecture._fil.start()
+        audio._laisse_finir(delai=5.0)
+        self.assertFalse(lecture._fil.is_alive())
+        self.assertEqual(audio._en_cours, set())
 
 
 class EcritureAlsa(unittest.TestCase):
