@@ -315,7 +315,14 @@ def _laisse_finir(delai: float = 5.0) -> None:
     bloque ne retienne jamais le programme, et cette attente bornee tient la
     promesse dans tous les cas ordinaires.
     """
-    for lecture in list(_en_cours):
+    # Le cliche sous verrou, l'attente hors verrou. A nu, `list(_en_cours)`
+    # court contre le `discard` d'un fil qui finit juste a ce moment-la, et
+    # c'est un RuntimeError a la sortie ; en tenant le verrou pendant le join,
+    # ce meme fil ne pourrait plus se retirer et l'attente irait au bout du
+    # delai a chaque fois.
+    with _verrou:
+        lectures = list(_en_cours)
+    for lecture in lectures:
         lecture.join(delai)
 
 
