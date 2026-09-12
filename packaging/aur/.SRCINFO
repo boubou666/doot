@@ -1,6 +1,6 @@
 pkgbase = spooky-doot
 	pkgdesc = Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er septembre au 31 octobre
-	pkgver = 1.7.2
+	pkgver = 1.8.0
 	pkgrel = 1
 	url = https://github.com/boubou666/doot
 	arch = any
@@ -12,6 +12,7 @@ pkgbase = spooky-doot
 	makedepends = python-wheel
 	depends = python
 	depends = tk
+	depends = python-desktop-overlay>=0.2.1
 	optdepends = pipewire-audio: lecture du son via pw-play
 	optdepends = libpulse: lecture du son via paplay
 	optdepends = alsa-utils: lecture du son via aplay
@@ -19,7 +20,7 @@ pkgbase = spooky-doot
 	optdepends = ffmpeg: idem, via ffplay
 	optdepends = xorg-xrandr: second recours pour la detection des ecrans multiples
 	conflicts = doot
-	source = spooky-doot-1.7.2.tar.gz::https://github.com/boubou666/doot/archive/refs/tags/v1.7.2.tar.gz
-	sha256sums = 34d596a9bc5a19b25fe9d799d1f58a2fc888e97ecaa48a984bee78a21eba4067
+	source = spooky-doot-1.8.0.tar.gz::https://github.com/boubou666/doot/archive/refs/tags/v1.8.0.tar.gz
+	sha256sums = 53824dec69693ab5e5f52e4e6373d830384f79dc604910a163c89a28cf66ef66
 
 pkgname = spooky-doot
