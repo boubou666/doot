@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # Le nom court « doot » est deja pris sur PyPI par un lanceur de taches. Seul
 # le nom de distribution change : le module reste `doot`, la commande aussi.
 name = "spooky-doot"
-version = "1.7.2"
+version = "1.8.0"
 description = "Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er septembre au 31 octobre."
 readme = "README.md"
 # La CI eprouve de nouveau 3.8 : uv telecharge l'interpreteur, la ou les images
@@ -36,7 +36,7 @@ classifiers = [
     "Topic :: Games/Entertainment",
     "Topic :: Multimedia :: Graphics",
 ]
-dependencies = ["desktop-overlay @ https://github.com/boubou666/desktop-overlay/releases/download/v0.2.0/desktop_overlay-0.2.0-py3-none-any.whl#sha256=9ac3676603f73f30bf2d756040cdc35faed9fd5977a6ebf53b5eafd0a5db4f34"]
+dependencies = ["desktop-overlay @ https://github.com/boubou666/desktop-overlay/releases/download/v0.2.1/desktop_overlay-0.2.1-py3-none-any.whl#sha256=c752c46c077390a1f6cc6569dae09df302a2d0810b6a555122366be38928c972"]
 
 [project.scripts]
 doot = "doot.cli:main"

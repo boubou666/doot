@@ -10,13 +10,13 @@
 # voir la note sur sha256sums plus bas.
 
 pkgname=doot
-pkgver=1.7.2
+pkgver=1.8.0
 pkgrel=1
 pkgdesc="Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er septembre au 31 octobre"
 arch=('any')
 url="https://github.com/boubou666/doot"
 license=('MIT')
-depends=('python' 'tk' 'python-desktop-overlay>=0.2.0')
+depends=('python' 'tk' 'python-desktop-overlay>=0.2.1')
 optdepends=(
     'libpulse: sortie audio native des wav, et lecture via paplay'
     'alsa-lib: sortie audio native des wav en second recours'
