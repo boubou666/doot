@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # Le nom court « doot » est deja pris sur PyPI par un lanceur de taches. Seul
 # le nom de distribution change : le module reste `doot`, la commande aussi.
 name = "spooky-doot"
-version = "1.7.0"
+version = "1.7.1"
 description = "Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er septembre au 31 octobre."
 readme = "README.md"
 # La CI eprouve de nouveau 3.8 : uv telecharge l'interpreteur, la ou les images

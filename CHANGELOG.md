@@ -12,6 +12,8 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.7.1] - 2026-09-12
+
 ### Corrigé
 - Le daemon ne tourne plus aveugle toute la session. L'unité s'installait
   `WantedBy=default.target`, donc elle démarrait avec le gestionnaire
@@ -436,7 +438,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.7.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.7.1...HEAD
+[1.7.1]: https://github.com/boubou666/doot/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/boubou666/doot/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/boubou666/doot/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/boubou666/doot/compare/v1.4.2...v1.5.0
