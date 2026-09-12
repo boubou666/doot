@@ -19,6 +19,9 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
   derrière un adaptateur mince.
 - Les installeurs autonomes vérifient le wheel 0.2.0 par SHA-256 ; la recette
   Arch dépend du paquet partagé python-desktop-overlay.
+- Les nouvelles versions sont distribuées par GitHub Releases : le paquet
+  référence le wheel 0.2.0 du moteur et son SHA-256, sans compte PyPI pour le
+  moteur.
 
 ### Corrigé
 - Sous Windows, les styles click-through et sans activation sont posés avant

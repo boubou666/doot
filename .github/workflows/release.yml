@@ -65,7 +65,7 @@ jobs:
           print(f"{etiquette} correspond a la version declaree dans les trois fichiers")
 
       - name: Suite de tests
-        run: uv run --no-project --with pillow --with "desktop-overlay @ git+https://github.com/boubou666/desktop-overlay.git@v0.2.0" python -m unittest discover -s tests
+        run: uv run --no-project --with pillow --with "desktop-overlay @ https://github.com/boubou666/desktop-overlay/releases/download/v0.2.0/desktop_overlay-0.2.0-py3-none-any.whl#sha256=9ac3676603f73f30bf2d756040cdc35faed9fd5977a6ebf53b5eafd0a5db4f34" python -m unittest discover -s tests
 
       - name: Construire les paquets
         # --no-sources : on construit comme le ferait un autre outil, sans
@@ -77,12 +77,6 @@ jobs:
         # uvx : twine tourne dans son propre environnement ephemere, rien ne
         # s'installe a cote des paquets qu'on vient de construire.
         run: uvx twine check dist/*
-
-      - name: Garder les paquets pour la publication PyPI
-        uses: actions/upload-artifact@v4
-        with:
-          name: paquets
-          path: dist/
 
       - name: Extraire la section du changelog
         shell: uv run --no-project python {0}
@@ -128,38 +122,3 @@ jobs:
             --notes-file notes-de-release.md \
             $prerelease \
             dist/*
-
-  pypi:
-    name: Publier sur PyPI
-    needs: release
-    runs-on: ubuntu-latest
-
-    # Job separe : PyPI refuse de republier une version deja envoyee, et un
-    # echec ici ne doit pas emporter la release GitHub, qui est deja faite.
-    environment:
-      name: pypi
-      url: https://pypi.org/p/spooky-doot
-
-    permissions:
-      # Seul droit necessaire : le jeton OIDC qui prouve a PyPI que la
-      # publication vient bien de ce depot et de ce workflow. Aucun secret
-      # n'est stocke, rien a renouveler.
-      id-token: write
-
-    steps:
-      - name: Installer uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-
-      - name: Recuperer les paquets construits
-        uses: actions/download-artifact@v4
-        with:
-          name: paquets
-          path: dist/
-
-      - name: Envoyer sur PyPI
-        # `always` plutot que le mode automatique : si le jeton OIDC manquait,
-        # on veut un echec net ici, pas une bascule silencieuse vers une
-        # recherche d'identifiants qui echouerait plus loin et moins clairement.
-        # uv invalide en plus le jeton de courte duree apres l'envoi, y compris
-        # quand celui-ci echoue, ce que l'action ne fait pas.
-        run: uv publish --trusted-publishing always dist/*
