@@ -12,6 +12,19 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Corrigé
+- Le daemon ne tourne plus aveugle toute la session. L'unité s'installait
+  `WantedBy=default.target`, donc elle démarrait avec le gestionnaire
+  utilisateur, avant que la session ne publie `DISPLAY` et `WAYLAND_DISPLAY`.
+  Comme l'environnement d'un processus ne change plus une fois qu'il tourne,
+  chaque doot échouait ensuite sur `no display name and no $DISPLAY` sans que
+  l'unité cesse d'afficher `active`. Elle s'accroche désormais à la session
+  graphique, et à `plasma-workspace.target` quand celle-ci a démarré, Plasma
+  publiant ces variables au même moment. L'installeur emploie `reenable` pour
+  que la mise à jour retire le lien périmé vers `default.target`, et le daemon
+  refuse de démarrer sans affichage plutôt que de boucler, ce qui laisse
+  systemd le relancer avec l'environnement complet.
+
 ## [1.7.0] - 2026-09-10
 
 ### Ajouté

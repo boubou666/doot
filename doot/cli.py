@@ -300,8 +300,32 @@ def do_once(args) -> int:
     return 0
 
 
+def sans_affichage() -> bool:
+    """Aucun serveur graphique joignable : ni X11, ni Wayland.
+
+    macOS et Windows dessinent sans passer par ces variables, la question ne
+    s'y pose pas.
+    """
+    if sys.platform in ("win32", "darwin"):
+        return False
+    return not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
 def do_daemon(args) -> int:
     from . import window
+
+    # L'environnement d'un processus ne change plus une fois qu'il tourne :
+    # demarre avant que la session ne publie DISPLAY, le daemon ne le verrait
+    # jamais apparaitre et echouerait a chaque doot jusqu'a la deconnexion.
+    # Sortir en erreur laisse le superviseur relancer plus tard, avec
+    # l'environnement complet.
+    if sans_affichage():
+        log(
+            "aucun affichage joignable : ni DISPLAY ni WAYLAND_DISPLAY. "
+            "Sortie en 5, pour etre relance quand la session les aura publies.",
+            quiet=args.quiet,
+        )
+        return 5
 
     if not claim_pid_file():
         log(f"une instance tourne deja (pid {running_pid()}), sortie.", quiet=args.quiet)

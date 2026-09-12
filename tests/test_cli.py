@@ -450,5 +450,75 @@ class PidPerime(CliTestCase):
         self.assertTrue(cli.claim_pid_file())
 
 
+class AucunAffichage(CliTestCase):
+    """Le daemon sort au lieu de tourner aveugle jusqu'a la deconnexion.
+
+    L'environnement d'un processus ne change plus une fois qu'il tourne :
+    demarre avant que la session ne publie DISPLAY, le daemon ne le verrait
+    jamais apparaitre. Sortir en erreur laisse le superviseur le relancer avec
+    l'environnement complet.
+    """
+
+    def environnement(self, **variables):
+        return mock.patch.dict(os.environ, variables, clear=False)
+
+    def sans(self, *noms):
+        propre = {k: v for k, v in os.environ.items() if k not in noms}
+        return mock.patch.dict(os.environ, propre, clear=True)
+
+    def boucle_interdite(self):
+        """Fait echouer le test si le daemon atteint sa boucle d'attente.
+
+        Sans ce garde-fou, un correctif retire laisserait le test tourner
+        jusqu'au premier `time.sleep` de dix minutes : il se bloquerait au lieu
+        d'echouer, ce qui ne previendrait personne.
+        """
+        def refus(_duree):
+            raise AssertionError("le daemon a atteint sa boucle au lieu de sortir")
+
+        return mock.patch.object(cli.time, "sleep", refus)
+
+    def test_ni_x11_ni_wayland(self):
+        with mock.patch.object(cli.sys, "platform", "linux"), \
+                self.sans("DISPLAY", "WAYLAND_DISPLAY"):
+            self.assertTrue(cli.sans_affichage())
+
+    def test_x11_suffit(self):
+        with mock.patch.object(cli.sys, "platform", "linux"), \
+                self.sans("WAYLAND_DISPLAY"), self.environnement(DISPLAY=":0"):
+            self.assertFalse(cli.sans_affichage())
+
+    def test_wayland_suffit(self):
+        with mock.patch.object(cli.sys, "platform", "linux"), \
+                self.sans("DISPLAY"), self.environnement(WAYLAND_DISPLAY="wayland-0"):
+            self.assertFalse(cli.sans_affichage())
+
+    def test_windows_et_macos_dessinent_sans_ces_variables(self):
+        for plateforme in ("win32", "darwin"):
+            with self.subTest(plateforme=plateforme):
+                with mock.patch.object(cli.sys, "platform", plateforme), \
+                        self.sans("DISPLAY", "WAYLAND_DISPLAY"):
+                    self.assertFalse(cli.sans_affichage())
+
+    def test_le_daemon_sort_en_5(self):
+        with mock.patch.object(cli, "sans_affichage", lambda: True), self.boucle_interdite():
+            code = self.run_cli("--ignore-season", "--quiet")
+        self.assertEqual(code, 5)
+        self.assertEqual(self.shown, [], "aucun doot ne doit avoir ete tente")
+
+    def test_le_daemon_ne_laisse_pas_de_fichier_pid(self):
+        """Sortir avant de reclamer le pid : sinon la relance se croirait en double."""
+        with mock.patch.object(cli, "sans_affichage", lambda: True), self.boucle_interdite():
+            self.run_cli("--ignore-season", "--quiet")
+        self.assertFalse(self.paths["pid"].exists())
+
+    def test_le_journal_dit_pourquoi_meme_en_quiet(self):
+        """L'unite tourne avec --quiet : sans le journal, le refus serait muet."""
+        with mock.patch.object(cli, "sans_affichage", lambda: True), self.boucle_interdite():
+            self.run_cli("--ignore-season", "--quiet")
+        journal = self.paths["log"].read_text(encoding="utf-8")
+        self.assertIn("aucun affichage joignable", journal)
+
+
 if __name__ == "__main__":
     unittest.main()

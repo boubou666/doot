@@ -10,6 +10,10 @@
 
 [Unit]
 Description=doot - squelette trompettiste saisonnier
+# Surtout pas default.target : il demarre avec le gestionnaire utilisateur,
+# avant que la session ne publie DISPLAY et WAYLAND_DISPLAY. Sous Plasma,
+# remplacer les deux lignes par plasma-workspace.target, que la publication de
+# ces variables accompagne.
 After=graphical-session.target
 PartOf=graphical-session.target
 
@@ -24,4 +28,4 @@ Restart=on-failure
 RestartSec=30
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

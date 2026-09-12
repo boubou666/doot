@@ -236,10 +236,27 @@ EOF
     elif command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
         UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
         mkdir -p "$UNIT_DIR"
+
+        # default.target demarre avec le gestionnaire utilisateur, avant que la
+        # session ne publie DISPLAY et WAYLAND_DISPLAY : doot n'avait alors
+        # aucun ecran ou dessiner. Plasma publie ces variables en meme temps que
+        # plasma-workspace.target, sans les ordonner face a
+        # graphical-session.target, d'ou l'accroche specifique quand elle
+        # existe.
+        # is-active et pas list-unit-files : jusqu'a systemd 245 inclus,
+        # list-unit-files renvoie 0 meme sans correspondance, donc le test
+        # serait toujours vrai et on ecrirait une cible inexistante. is-active
+        # repond en plus a la bonne question : non pas si la cible est sur le
+        # disque, mais si elle a demarre cette session.
+        CIBLE="graphical-session.target"
+        if systemctl --user is-active --quiet plasma-workspace.target; then
+            CIBLE="plasma-workspace.target"
+        fi
+
         cat > "$UNIT_DIR/doot.service" <<EOF
 [Unit]
 Description=doot - squelette trompettiste saisonnier
-After=graphical-session.target
+After=$CIBLE
 PartOf=graphical-session.target
 
 [Service]
@@ -249,15 +266,18 @@ Restart=on-failure
 RestartSec=30
 
 [Install]
-WantedBy=default.target
+WantedBy=$CIBLE
 EOF
         systemctl --user daemon-reload
-        systemctl --user enable doot.service >/dev/null 2>&1 || true
+        # reenable et pas enable : sur une mise a jour depuis une version
+        # accrochee a default.target, enable ajouterait le nouveau lien sans
+        # retirer l'ancien, et l'unite continuerait de demarrer trop tot.
+        systemctl --user reenable doot.service >/dev/null 2>&1 || true
         # restart et pas `enable --now` : sur une reinstallation l'unite tourne
         # deja, et --now ne relancerait pas le code fraichement copie.
         systemctl --user restart doot.service
         DAEMON_TOURNAIT=0
-        say "systemd     : doot.service actif (systemctl --user status doot)"
+        say "systemd     : doot.service actif, accroche a $CIBLE"
     else
         DESKTOP_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
         mkdir -p "$DESKTOP_DIR"
