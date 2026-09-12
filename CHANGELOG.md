@@ -12,6 +12,18 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.7.2] - 2026-09-12
+
+### Corrigé
+- L'attente des sons natifs à la sortie du programme ne court plus contre
+  les fils de lecture. `_laisse_finir` parcourait `_en_cours` sans le verrou
+  pendant qu'un fil qui finit s'en retire : un fil s'achevant juste à ce
+  moment-là levait un `RuntimeError` au moment même où doot s'arrêtait. La
+  copie de l'ensemble se prend désormais sous le verrou, et les `join` se
+  font sans lui, sans quoi la lecture attendue ne pourrait plus se retirer et
+  chaque sortie durerait le délai entier. Signalé par la revue du même code
+  porté dans butbutbut.
+
 ## [1.7.1] - 2026-09-12
 
 ### Corrigé
@@ -438,7 +450,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.7.1...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.7.2...HEAD
+[1.7.2]: https://github.com/boubou666/doot/compare/v1.7.1...v1.7.2
 [1.7.1]: https://github.com/boubou666/doot/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/boubou666/doot/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/boubou666/doot/compare/v1.5.0...v1.6.0
