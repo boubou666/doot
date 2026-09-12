@@ -34,13 +34,13 @@
 
 pkgname=spooky-doot
 _repo=doot
-pkgver=1.7.2
+pkgver=1.8.0
 pkgrel=1
 pkgdesc="Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er septembre au 31 octobre"
 arch=('any')
 url="https://github.com/boubou666/doot"
 license=('MIT')
-depends=('python' 'tk' 'python-desktop-overlay>=0.2.0')
+depends=('python' 'tk' 'python-desktop-overlay>=0.2.1')
 
 # La commande s'installe en /usr/bin/doot, que le paquet AUR « doot » installe
 # aussi. Les deux ne peuvent pas cohabiter et pacman le dira proprement plutot
@@ -62,7 +62,7 @@ optdepends=(
 makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
 checkdepends=('python-pillow')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('34d596a9bc5a19b25fe9d799d1f58a2fc888e97ecaa48a984bee78a21eba4067')
+sha256sums=('53824dec69693ab5e5f52e4e6373d830384f79dc604910a163c89a28cf66ef66')
 
 build() {
     cd "$srcdir/$_repo-$pkgver"
