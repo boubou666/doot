@@ -12,15 +12,17 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.8.0] - 2026-09-12
+
 ### Modifié
 - L'énumération des écrans, la géométrie partagée et la préparation des
-  fenêtres tkinter viennent désormais de desktop-overlay 0.2.0. Doot garde
+  fenêtres tkinter viennent désormais de desktop-overlay 0.2.1. Doot garde
   son choix aléatoire d'écran, ses textes français et ses méthodes historiques
   derrière un adaptateur mince.
-- Les installeurs autonomes vérifient le wheel 0.2.0 par SHA-256 ; la recette
+- Les installeurs autonomes vérifient le wheel 0.2.1 par SHA-256 ; la recette
   Arch dépend du paquet partagé python-desktop-overlay.
 - Les nouvelles versions sont distribuées par GitHub Releases : le paquet
-  référence le wheel 0.2.0 du moteur et son SHA-256, sans compte PyPI pour le
+  référence le wheel 0.2.1 du moteur et son SHA-256, sans compte PyPI pour le
   moteur.
 
 ### Corrigé
@@ -467,7 +469,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.7.2...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/boubou666/doot/compare/v1.7.2...v1.8.0
 [1.7.2]: https://github.com/boubou666/doot/compare/v1.7.1...v1.7.2
 [1.7.1]: https://github.com/boubou666/doot/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/boubou666/doot/compare/v1.6.0...v1.7.0
