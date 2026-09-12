@@ -9,8 +9,8 @@ posee sur un ecran tombe entierement dedans.
 from __future__ import annotations
 
 import random
-import socket
 import unittest
+from unittest import mock
 
 from doot import screens
 
@@ -36,6 +36,23 @@ class Enumeration(unittest.TestCase):
         text = screens.describe(screens.monitors())
         self.assertIn("ecran", text)
 
+class SharedBackend(unittest.TestCase):
+    """The application adapter preserves Doot's public monitor type."""
+
+    def test_engine_rectangles_are_adapted(self):
+        shared = screens._geometry.Monitor(
+            -1920, 20, 1920, 1040, primary=True, name="partage"
+        )
+        with mock.patch.object(
+                screens, "enumerate_monitors", return_value=[shared]) as detect:
+            found = screens.monitors(1280, 720)
+
+        detect.assert_called_once_with(1280, 720)
+        self.assertIsInstance(found[0], screens.Monitor)
+        self.assertEqual(
+            (found[0].x, found[0].y, found[0].name),
+            (-1920, 20, "partage"),
+        )
 
 class Selection(unittest.TestCase):
     """La semantique de --screen."""
@@ -295,81 +312,6 @@ class EntreeParLeCote(unittest.TestCase):
         _, _, rx, ry = self.gauche.entry(4000, 4000, "left", self.rng)
         self.assertEqual((rx, ry), (self.gauche.x, self.gauche.y))
 
-
-class EnumerationLinux(unittest.TestCase):
-    """La chaine socket X -> `xrandr` -> repli, sans dependre de la machine."""
-
-    def setUp(self):
-        self.addCleanup(setattr, screens, "_linux_monitors_wire",
-                        screens._linux_monitors_wire)
-        self.addCleanup(setattr, screens, "_linux_monitors_cli",
-                        screens._linux_monitors_cli)
-
-    @staticmethod
-    def _un(nom):
-        return [screens.Monitor(0, 0, 800, 600, name=nom)]
-
-    def test_la_socket_passe_avant_le_binaire(self):
-        screens._linux_monitors_wire = lambda: self._un("wire")
-        screens._linux_monitors_cli = lambda: self._un("cli")
-        self.assertEqual([m.name for m in screens._linux_monitors()], ["wire"])
-
-    def test_repli_sur_le_binaire_si_la_socket_ne_trouve_rien(self):
-        screens._linux_monitors_wire = list
-        screens._linux_monitors_cli = lambda: self._un("cli")
-        self.assertEqual([m.name for m in screens._linux_monitors()], ["cli"])
-
-    def test_une_erreur_de_connexion_ne_bloque_pas_la_suite(self):
-        def refusee():
-            raise ConnectionError("connexion X refusee")
-
-        screens._linux_monitors_wire = refusee
-        screens._linux_monitors_cli = lambda: self._un("cli")
-        self.assertEqual([m.name for m in screens._linux_monitors()], ["cli"])
-
-    def test_la_socket_se_ferme_si_la_poignee_de_main_echoue(self):
-        """Le repli normal quand l'auth echoue ne doit pas laisser de descripteur."""
-        gauche, droite = socket.socketpair()
-        self.addCleanup(droite.close)
-        self.addCleanup(gauche.close)
-        ouvre = screens._XConnection.__dict__["_open"]
-        poignee = screens._XConnection.__dict__["_setup"]
-        self.addCleanup(setattr, screens._XConnection, "_open", ouvre)
-        self.addCleanup(setattr, screens._XConnection, "_setup", poignee)
-
-        def refus(self, *args):
-            raise ConnectionError("connexion X refusee")
-
-        screens._XConnection._open = staticmethod(lambda host, number: gauche)
-        screens._XConnection._setup = refus
-
-        with self.assertRaises(ConnectionError):
-            screens._XConnection()
-        self.assertEqual(gauche.fileno(), -1)
-
-    def test_sans_rien_la_liste_est_vide(self):
-        screens._linux_monitors_wire = list
-        screens._linux_monitors_cli = list
-        self.assertEqual(screens._linux_monitors(), [])
-
-    def test_analyse_de_la_sortie_de_xrandr(self):
-        class Sortie:
-            returncode = 0
-            stdout = (
-                "Monitors: 2\n"
-                " 0: +*eDP-1 2256/280x1504/190+0+0  eDP-1\n"
-                " 1: +DP-9 1920/540x1080/300+2256+0  DP-9\n"
-            )
-
-        self.addCleanup(setattr, screens.subprocess, "run", screens.subprocess.run)
-        screens.subprocess.run = lambda *args, **kwargs: Sortie()
-
-        found = screens._linux_monitors_cli()
-        self.assertEqual([m.name for m in found], ["eDP-1", "DP-9"])
-        self.assertEqual((found[0].width, found[0].height), (2256, 1504))
-        self.assertEqual((found[1].x, found[1].y), (2256, 0))
-        self.assertTrue(found[0].primary)
-        self.assertFalse(found[1].primary)
 
 
 if __name__ == "__main__":

@@ -147,6 +147,8 @@ ALSA, sans passer par un lecteur. `doot --status` dit laquelle est utilisée.
 
 ### Arch Linux, via un paquet
 
+Installe d'abord [python-desktop-overlay](https://github.com/boubou666/desktop-overlay/tree/main/packaging), puis :
+
 ```bash
 cd packaging
 makepkg -si
@@ -177,7 +179,7 @@ Démarrage. Aucun droit administrateur, aucun composant système modifié.
 ### Sans installer (test rapide)
 
 ```bash
-python3 -m doot --once --ignore-season
+uv run --no-project --with "desktop-overlay @ git+https://github.com/boubou666/desktop-overlay.git@v0.2.0" python -m doot --once --ignore-season
 ```
 
 ## Versions

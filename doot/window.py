@@ -23,6 +23,8 @@ import tempfile
 from fractions import Fraction
 from pathlib import Path
 
+from desktop_overlay import window as overlay_window
+
 from . import art, png, screens, sound, wayland, x11
 
 TRANSPARENT_KEY = "#ff00ff"
@@ -43,9 +45,8 @@ class TkinterMissing(RuntimeError):
 
 def _import_tk():
     try:
-        import tkinter as tk
-        import tkinter.font as tkfont
-    except Exception as exc:  # pragma: no cover - depend de l'install systeme
+        return overlay_window.import_tk()
+    except overlay_window.TkinterMissing as exc:
         raise TkinterMissing(
             "tkinter est introuvable. Installe-le :\n"
             "  Arch/Manjaro   : sudo pacman -S tk\n"
@@ -54,7 +55,6 @@ def _import_tk():
             "  macOS (brew)   : brew install python-tk\n"
             "  Windows        : reinstalle Python en cochant 'tcl/tk'"
         ) from exc
-    return tk, tkfont
 
 
 def _pick_font(tkfont, size: int):
@@ -64,57 +64,6 @@ def _pick_font(tkfont, size: int):
         if name in families:
             return (name, size, "bold")
     return ("TkFixedFont", size, "bold")
-
-
-def _make_click_through(window) -> None:
-    """Windows : la fenetre ignore la souris et ne prend jamais le focus."""
-    if sys.platform != "win32":
-        return
-    try:
-        import ctypes
-
-        GWL_EXSTYLE = -20
-        WS_EX_LAYERED = 0x00080000
-        WS_EX_TRANSPARENT = 0x00000020
-        WS_EX_NOACTIVATE = 0x08000000
-        WS_EX_TOOLWINDOW = 0x00000080
-
-        window.update_idletasks()
-        hwnd = ctypes.windll.user32.GetParent(window.winfo_id()) or window.winfo_id()
-        user32 = ctypes.windll.user32
-        style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-        user32.SetWindowLongW(
-            hwnd,
-            GWL_EXSTYLE,
-            style | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
-        )
-    except Exception:
-        pass
-
-
-def _setup_transparency(window) -> str:
-    """Rend le fond transparent si possible ; renvoie la couleur de fond a utiliser."""
-    if sys.platform == "win32":
-        try:
-            window.wm_attributes("-transparentcolor", TRANSPARENT_KEY)
-            return TRANSPARENT_KEY
-        except Exception:
-            return FALLBACK_BG
-
-    if sys.platform == "darwin":
-        try:
-            window.wm_attributes("-transparent", True)
-            window.config(bg="systemTransparent")
-            return "systemTransparent"
-        except Exception:
-            return FALLBACK_BG
-
-    # X11 / Wayland : vraie transparence seulement avec un compositeur.
-    try:
-        window.wm_attributes("-type", "splash")
-    except Exception:
-        pass
-    return FALLBACK_BG
 
 
 def _rescale(photo, scale: float):
@@ -362,19 +311,11 @@ def show(
     tk, tkfont = _import_tk()
 
     root = tk.Tk()
-    root.withdraw()
-    root.overrideredirect(True)
-    try:
-        root.wm_attributes("-topmost", True)
-    except Exception:
-        pass
-    try:
-        root.wm_attributes("-alpha", 0.0)  # on apparait en fondu
-    except Exception:
-        pass
-
-    background = _setup_transparency(root)
-    root.configure(bg=background)
+    background = overlay_window.prepare_window(
+        root,
+        transparent_key=TRANSPARENT_KEY,
+        fallback_background=FALLBACK_BG,
+    )
 
     # Ecran d'accueil : tkinter ne sait pas decrire un montage multi-ecrans,
     # on demande au systeme (voir screens.py).
@@ -454,10 +395,10 @@ def show(
         repos_x, repos_y = monitor.place(width, height, center, random)
         depart_x, depart_y = repos_x, repos_y
 
-    root.geometry(f"{width}x{height}+{depart_x}+{depart_y}")
-
-    root.deiconify()
-    _make_click_through(root)
+    overlay_window.move_window(
+        root, width, height, depart_x, depart_y
+    )
+    overlay_window.show_window(root)
 
     # Le son sort de l'endroit ou le squelette se posera.
     pan = screens.pan_for(repos_x + width / 2, found) if spatialise else 0.0
@@ -483,9 +424,12 @@ def show(
         # revele deja le squelette, et les deux ensemble font bouillie.
         if slide and elapsed <= slide_ms:
             avance = screens.ease_out(elapsed / slide_ms)
-            root.geometry(
-                f"+{int(depart_x + (repos_x - depart_x) * avance)}"
-                f"+{int(depart_y + (repos_y - depart_y) * avance)}"
+            overlay_window.move_window(
+                root,
+                width,
+                height,
+                int(depart_x + (repos_x - depart_x) * avance),
+                int(depart_y + (repos_y - depart_y) * avance),
             )
             set_alpha(1.0)
         elif not slide and elapsed < fade_in_ms:

@@ -65,7 +65,7 @@ jobs:
           print(f"{etiquette} correspond a la version declaree dans les trois fichiers")
 
       - name: Suite de tests
-        run: uv run --no-project --with pillow python -m unittest discover -s tests
+        run: uv run --no-project --with pillow --with "desktop-overlay @ git+https://github.com/boubou666/desktop-overlay.git@v0.2.0" python -m unittest discover -s tests
 
       - name: Construire les paquets
         # --no-sources : on construit comme le ferait un autre outil, sans

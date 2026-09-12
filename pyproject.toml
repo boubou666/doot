@@ -36,7 +36,7 @@ classifiers = [
     "Topic :: Games/Entertainment",
     "Topic :: Multimedia :: Graphics",
 ]
-dependencies = []
+dependencies = ["desktop-overlay>=0.2.0,<0.3"]
 
 [project.scripts]
 doot = "doot.cli:main"
