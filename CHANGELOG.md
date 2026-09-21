@@ -12,6 +12,8 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.22.0] - 2026-09-21
+
 ### Ajouté
 - **Le rite du dernier soir.** Le 31 octobre à partir de 20 h, douze
   trompettistes saluent la fermeture de la crypte, et doot laisse derrière lui
@@ -750,7 +752,9 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.20.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.22.0...HEAD
+[1.22.0]: https://github.com/boubou666/doot/compare/v1.20.0...v1.22.0
+[1.21.0]: https://github.com/boubou666/doot/compare/v1.20.0...84280d6ace4b5cd6a1da8d5935a2fa58b43a695d
 [1.20.0]: https://github.com/boubou666/doot/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/boubou666/doot/compare/v1.18.1...v1.19.0
 [1.18.1]: https://github.com/boubou666/doot/compare/v1.18.0...v1.18.1
