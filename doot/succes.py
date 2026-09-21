@@ -246,6 +246,16 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
             _ajoute(stats, "rickrolls", origine)
         _jour_actif(stats, maintenant)
 
+    elif evenement == "apparition":
+        # Une rencontre vue sans salve a elle : ce qui l'a portee - une melodie
+        # venue d'une autre machine - compte deja ses propres doots, et les
+        # recompter ici les ferait tomber deux fois.
+        nom = details.get("nom")
+        if isinstance(nom, str) and nom:
+            _ajoute(stats, "evenements", origine)
+            _ajoute_unique(stats, "evenements_vus", nom)
+            _jour_actif(stats, maintenant)
+
     elif evenement == "profil":
         nom = details.get("nom")
         if isinstance(nom, str):

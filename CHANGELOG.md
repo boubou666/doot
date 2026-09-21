@@ -28,6 +28,14 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
   a son onglet. Rien n'est collecté de neuf : tout cela dormait déjà dans
   `state.json`, sans autre visage que le score.
 
+### Modifié
+- Le **Doot contagieux** transporte désormais ce qui a été joué : une rencontre
+  rare traverse avec sa chorégraphie, une mélodie avec son nom. Les deux clés
+  restent facultatives des deux côtés, donc une flotte se met à jour machine par
+  machine. `--no-melody` et `--no-event` l'emportent sur ce que le signal
+  demande, une mélodie inconnue du poste retombe en doot, et le nom reçu est
+  cherché par égalité dans le catalogue local — jamais comme un chemin.
+
 ## [1.21.0] - 2026-09-20
 
 ### Ajouté

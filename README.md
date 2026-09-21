@@ -59,8 +59,9 @@
   écrans, tomber du haut, tournoyer sur place ou se répondre en duel.
 - **Rencontres rares** : parade, pluie d'os, vortex, duel, Mimic et faux bug
   interrompent parfois la routine ; le Codex garde la trace des découvertes.
-- **Doot contagieux** : les machines d'une même flotte chiffrée peuvent se
-  transmettre une apparition éphémère, sans serveur ni dépendance au réseau.
+- **Doot contagieux** : les machines d'une même flotte chiffrée se transmettent
+  une apparition éphémère — et ce qu'elle portait, mélodie ou rencontre rare —
+  sans serveur ni dépendance au réseau.
 - **Profils persistants** : sauvegarde plusieurs ambiances et active celle que
   le daemon doit reprendre automatiquement, y compris après une mise à jour.
 - **Registre de la crypte** : les soirs de la saison en grille, les totaux, les
@@ -370,6 +371,29 @@ doucement le dépôt entre deux déclenchements : avec 12 % de chance, un doot
 local y laisse pendant cinq minutes un signal qu'une autre machine fera surgir
 chez elle. Chaque signal n'est joué qu'une fois par poste et ne rebondit pas,
 donc deux machines ne peuvent pas s'enfermer dans une épidémie infinie.
+
+Le signal dit **ce qui a été joué** là-bas. Une pluie d'os traverse avec sa
+chorégraphie, un rickroll avec son nom : le portable qui joue une mélodie la
+fait jouer sur le fixe, et ce n'est plus seulement « un doot a eu lieu quelque
+part ». Quatre garde-fous :
+
+- les deux clés sont **facultatives des deux côtés**. Un poste plus ancien
+  n'écrit rien de plus et reçoit le doot ordinaire ; un poste plus ancien qui
+  reçoit une charge l'ignore et joue le doot. Une flotte se met à jour machine
+  par machine sans se casser ;
+- **tes refus gagnent**. `--no-melody` et `--no-event` rendent le doot bref :
+  un poste qu'on a fait taire sur un point ne se le voit pas rouvrir par un pair ;
+- une mélodie **que ce poste ne connaît pas** retombe en doot. Deux machines ne
+  portent pas forcément les mêmes fichiers dans `melodies/` ;
+- ce qui traverse reste **une contagion** au Codex, même quand c'est une parade.
+  La rencontre a été vue là-bas et son poste l'a comptée ; la compter ici aussi
+  ferait d'une flotte un moyen de collectionner les rencontres rares.
+
+Le nom porté par un signal vient d'une autre machine, et il sert à chercher une
+mélodie. Il est donc réduit à un jeton — ni séparateur, ni point de tête, 48
+caractères au plus — et cherché **par égalité** dans le catalogue local. Jamais
+comme un chemin : `doot --play` accepte un fichier, et ce chemin-là ne doit pas
+pouvoir être choisi depuis le dépôt partagé.
 
 Rien d'autre à lancer : un dépôt injoignable ou un disque plein laissent la
 progression locale intacte et l'ennui dans `doot --succes`, parce qu'un doot ne
@@ -1025,6 +1049,7 @@ des quatre installeurs.
 | `doot/profiles.py` | le stockage et l'activation des profils persistants |
 | `doot/succes.py` | les succès, les parts par machine et leur fusion |
 | `doot/registre.py` | le registre : totaux, records, machines et grille de saison |
+| `doot/contagion.py` | les signaux du doot contagieux et ce qu'ils portent |
 | `doot/police.py` | la fonte matricielle 5x7, dessinée à la main |
 | `doot/carte.py` | la carte de fin de saison, composée en PNG |
 | `doot/audio.py` | la sortie audio native (PulseAudio/PipeWire, ALSA) |

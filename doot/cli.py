@@ -740,11 +740,16 @@ def note_melodie(jouee: bool) -> None:
     write_state(etat)
 
 
-def emit_melodie_tiree(args, fichier, journal: bool = False) -> bool:
+def emit_melodie_tiree(args, fichier, journal: bool = False, repli=None) -> bool:
     """Joue la melodie tiree au sort ; faux si elle etait illisible.
 
     Le repli sur des doots ne vaut pas melodie jouee : rendre faux laisse la
     garantie due au declenchement suivant, au lieu de la repousser d'autant.
+
+    `repli` donne les reglages de ce repli quand ils ne sont pas ceux du
+    declenchement. La contagion s'en sert : sa melodie est breve et vient
+    d'ailleurs, donc son echec doit rendre un doot bref et non la salve que le
+    daemon jouerait de lui-meme.
     """
     from . import melodie
 
@@ -752,7 +757,7 @@ def emit_melodie_tiree(args, fichier, journal: bool = False) -> bool:
         morceau = melodie.load(fichier)
     except melodie.MelodieError as exc:
         log(f"melodie illisible ({fichier.name}) : {exc}", quiet=args.quiet)
-        emit_doots(args, journal=journal)
+        emit_doots(repli if repli is not None else args, journal=journal)
         return False
 
     emit_melodie(args, morceau)
@@ -833,21 +838,47 @@ def sync_tour(args) -> list[dict]:
     return signaux
 
 
-def propager_contagion(args, rng=random) -> bool:
-    """Publie parfois le doot qui vient d'etre joue dans la crypte partagee."""
+def propager_contagion(args, charge=None, rng=random) -> bool:
+    """Publie parfois dans la crypte partagee ce qui vient d'etre joue ici.
+
+    La charge decrit le declenchement qui vient d'aboutir. Sans elle, le signal
+    reste le doot ordinaire d'avant : un declenchement rate n'a rien a faire
+    voyager.
+    """
 
     if args.no_contagion or not partage.reglage(paths()["data"]).get("cle"):
         return False
     if rng.random() >= args.contagion_chance:
         return False
+    genre, nom = charge or ("doot", "")
     etat = read_state()
-    etat["contagion_sortante"] = contagion.creer(succes.machine(etat))
+    etat["contagion_sortante"] = contagion.creer(
+        succes.machine(etat), genre=genre, nom=nom,
+    )
     write_state(etat)
     return True
 
 
-def emit_contagion(args, signal: dict, journal: bool = True) -> bool:
-    """Fait surgir sur ce poste le doot bref parti d'une autre machine."""
+def melodie_locale(nom: str):
+    """La melodie que ce poste connait sous ce nom, ou rien.
+
+    Une egalite sur le catalogue d'ici, jamais une recherche par chemin :
+    `melodie.find` ouvrirait le fichier designe des que le nom finit en .rtttl,
+    et ce nom-la vient d'une autre machine.
+    """
+    from . import melodie
+
+    if not nom:
+        return None
+    dossier = paths()["melodies"]
+    for candidat in melodie.custom(dossier) + melodie.bundled():
+        if candidat.stem.casefold() == nom:
+            return candidat
+    return None
+
+
+def contagion_configuree(args, signal: dict):
+    """Les reglages du doot bref : court, sur place, entrant par un bord."""
 
     configured = copy.copy(args)
     configured.burst_min = configured.burst_max = 1
@@ -858,10 +889,50 @@ def emit_contagion(args, signal: dict, journal: bool = True) -> bool:
     configured.side = "left" if sum(map(ord, source_key)) % 2 else "right"
     configured.no_slide = False
     configured.spin = False
+    return configured
+
+
+def emit_contagion(args, signal: dict, journal: bool = True) -> bool:
+    """Fait surgir ici ce qu'une autre machine vient de jouer chez elle.
+
+    Ce qui traverse reste une contagion aux yeux du Codex, meme quand c'est une
+    parade ou un rickroll : la rencontre rare a ete vue la-bas, et la compter
+    ici une seconde fois ferait d'une flotte un moyen de les collectionner.
+
+    Les refus du poste l'emportent sur ce que le signal demande. Un poste qui a
+    coupe les melodies ou les rencontres recoit le doot, pas le reste.
+    """
+    from . import evenements
+
+    genre, nom = contagion.charge(signal)
+    source = signal.get("source", "une autre machine")
+
+    if genre == "evenement" and not args.no_event:
+        evenement = evenements.find(nom)
+        if evenement is not None:
+            if journal:
+                log(f"DOOT CONTAGIEUX : {source} a vu {evenement.titre}.",
+                    quiet=args.quiet)
+            configured = evenements.configure(copy.copy(args), evenement)
+            return emit_doots(configured, journal=journal, evenement="contagion") > 0
+
+    if genre == "melodie" and not args.no_melody:
+        fichier = melodie_locale(nom)
+        if fichier is not None:
+            if journal:
+                log(f"DOOT CONTAGIEUX : {source} joue {fichier.stem}.",
+                    quiet=args.quiet)
+            joue = emit_melodie_tiree(
+                args, fichier, journal=journal,
+                repli=contagion_configuree(args, signal),
+            )
+            note_succes(args, "apparition", nom="contagion")
+            return joue
+
     if journal:
-        source = signal.get("source", "une autre machine")
         log(f"DOOT CONTAGIEUX : signal recu de {source}.", quiet=args.quiet)
-    return emit_doots(configured, journal=journal, evenement="contagion") > 0
+    return emit_doots(contagion_configuree(args, signal), journal=journal,
+                      evenement="contagion") > 0
 
 
 def jouer_contagions(args, signaux: list[dict]) -> int:
@@ -1298,6 +1369,7 @@ def do_daemon(args) -> int:
                 continue  # la saison s'est fermee pendant l'attente
 
             try:
+                charge = None
                 rite = rite_du_soir(args)
                 evenement = rite or event_roll(args)
                 if evenement is not None:
@@ -1306,6 +1378,8 @@ def do_daemon(args) -> int:
                         else emit_evenement(args, evenement, journal=True)
                     )
                     melodie_jouee = False
+                    if evenement_joue:
+                        charge = ("evenement", evenement.identifiant)
                 else:
                     evenement_joue = False
                     fichier = melody_roll(args)
@@ -1314,10 +1388,12 @@ def do_daemon(args) -> int:
                         melodie_jouee = False
                     else:
                         melodie_jouee = emit_melodie_tiree(args, fichier, journal=True)
+                        if melodie_jouee:
+                            charge = ("melodie", fichier.stem)
                 if not args.no_event:
                     note_evenement(evenement_joue)
                 note_melodie(melodie_jouee)
-                propager_contagion(args)
+                propager_contagion(args, charge)
                 jouer_contagions(args, sync_tour(args))
             except window.TkinterMissing as exc:
                 log(str(exc), quiet=args.quiet)
