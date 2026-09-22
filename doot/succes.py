@@ -30,6 +30,9 @@ TOTAUX = (
     "campagnes_terminees", "invasions_terminees", "replays_exportes", "takes_live",
     "expeditions_terminees", "familiers_evolues", "contrats_termines", "samples_dj",
     "chasses_codes", "new_game_plus", "sessions_coop", "nuits_infinies",
+    "batiments_construits", "builds_reliques", "missions_faction", "nemesis_vaincues",
+    "enquetes_resolues", "courses_fantomes", "partitions_adaptatives", "films_realises",
+    "packs_atelier_valides", "boss_miroirs", "langues_dechiffrees",
 )
 MAXIMA = ("plus_grande_salve", "voix_max", "serie_defis")
 ENSEMBLES = (
@@ -229,6 +232,40 @@ CATALOGUE = (
     Succes("nuit_sans_fin", "L'aube impossible",
            "Traverser les six actes de la Nuit infinie.", 50, 1,
            _valeur("nuits_infinies")),
+    Succes("architecte_osseux", "Architecte osseux",
+           "Elever le premier batiment de la Cite des Os.", 30, 1,
+           _valeur("batiments_construits")),
+    Succes("maitre_reliquaire", "Maitre du reliquaire",
+           "Equiper une relique dans un build roguelite.", 25, 1,
+           _valeur("builds_reliques")),
+    Succes("ambassadeur_crypte", "Ambassadeur de la crypte",
+           "Accomplir une mission pour une faction.", 25, 1,
+           _valeur("missions_faction")),
+    Succes("rancune_eternelle", "Rancune eternelle",
+           "Vaincre sa Nemesis persistante.", 50, 1,
+           _valeur("nemesis_vaincues")),
+    Succes("enqueteur_paranormal", "Enqueteur paranormal",
+           "Resoudre une affaire surnaturelle.", 30, 1,
+           _valeur("enquetes_resolues")),
+    Succes("ombre_chronometree", "Ombre chronometree",
+           "Battre un fantome dans une course asynchrone.", 25, 1,
+           _valeur("courses_fantomes")),
+    Succes("maestro_adaptatif", "Maestro adaptatif",
+           "Porter la partition reactive au-dela de la demi-intensite.", 25, 1,
+           _valeur("partitions_adaptatives")),
+    Succes("realisateur_outre_tombe", "Realisateur d'outre-tombe",
+           "Creer un film ou un portrait au studio.", 25, 1,
+           _valeur("films_realises")),
+    Succes("gardien_atelier", "Gardien de l'atelier",
+           "Valider un pack communautaire fiable.", 20, 1,
+           _valeur("packs_atelier_valides")),
+    Succes("miroir_noir", "Le miroir noir",
+           "Faire naitre le boss qui imite ton style.", 35, 1,
+           _valeur("boss_miroirs")),
+    Succes("langue_des_morts", "La langue des morts",
+           "Dechiffrer les cinq glyphes de la crypte.", 50, 1,
+           _valeur("langues_dechiffrees"), True,
+           ("Cinq signes parlent sans bouche.", "Leur sens voyage entre les nuits.")),
 )
 
 
@@ -417,6 +454,51 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
     elif evenement == "nuit_infinie":
         if details.get("completed") is True:
             _ajoute(stats, "nuits_infinies", origine)
+
+    elif evenement == "city":
+        if entier(details.get("level")) >= 1:
+            _ajoute(stats, "batiments_construits", origine)
+
+    elif evenement == "relic_build":
+        if entier(details.get("equipped")) >= 1:
+            _ajoute(stats, "builds_reliques", origine)
+
+    elif evenement == "faction":
+        if entier(details.get("reputation")) >= 1:
+            _ajoute(stats, "missions_faction", origine)
+
+    elif evenement == "nemesis":
+        if details.get("defeated") is True:
+            _ajoute(stats, "nemesis_vaincues", origine)
+
+    elif evenement == "investigation":
+        if details.get("solved") is True:
+            _ajoute(stats, "enquetes_resolues", origine)
+
+    elif evenement == "ghost_race":
+        if details.get("won") is True:
+            _ajoute(stats, "courses_fantomes", origine)
+
+    elif evenement == "adaptive_score":
+        intensity = details.get("intensity", 0)
+        if isinstance(intensity, (int, float)) and not isinstance(intensity, bool) and intensity >= .5:
+            _ajoute(stats, "partitions_adaptatives", origine)
+
+    elif evenement == "director":
+        if details.get("exported") is True:
+            _ajoute(stats, "films_realises", origine)
+
+    elif evenement == "workshop":
+        if details.get("valid") is True:
+            _ajoute(stats, "packs_atelier_valides", origine)
+
+    elif evenement == "mirror_boss":
+        if details.get("generated") is True:
+            _ajoute(stats, "boss_miroirs", origine)
+
+    elif evenement == "glyphs":
+        if details.get("completed") is True:
+            _ajoute(stats, "langues_dechiffrees", origine)
 
     return _debloquer(etat, maintenant)
 

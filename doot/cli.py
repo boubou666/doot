@@ -9,17 +9,18 @@ import json
 import os
 import random
 import shutil
+import subprocess
 import sys
 import time
 import zipfile
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from . import (
     __version__, adventure, art, carte, challenges, choreography, coffre, codex,
     contagion, content, duel, history, image, notification, packs, partage,
     procedural, profiles, registre, replay, rituals, schedule, season, sound, succes,
-    wave3,
+    wave3, wave4,
 )
 
 DEFAULT_MIN_SECONDS = 600     # 10 min
@@ -1526,6 +1527,286 @@ def do_night_infinite(args, seed: str) -> int:
     return 0
 
 
+# --------------------------------------------------------------- vague 4 -----
+
+def do_city(args, building: str) -> int:
+    state = read_state()
+    try:
+        item = wave4.develop_city(state, building) if building else wave4.city_status(state)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if building:
+        note_succes(args, "city", level=item["level"])
+    print(f"{item['name']} — niveau {item['level']} — {item['bones']} os")
+    for place in item["buildings"]:
+        print(f"  {place['id']:<10} niv. {place['level']}  prochain cout {place['cost']} — {place['effect']}")
+    return 0
+
+
+def do_relics(args, wanted: str) -> int:
+    state = read_state()
+    try:
+        item = wave4.equip_relic(state, wanted) if wanted else wave4.reliquary(state)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if wanted:
+        note_succes(args, "relic_build", equipped=len(item["equipped"]))
+    print(f"Reliquaire — {len(item['equipped'])}/{item['slots']} emplacement(s)")
+    for relic in item["items"]:
+        marker = "*" if relic["equipped"] else ("+" if relic["owned"] else "?")
+        print(f"  {marker} {relic['id']:<20} {relic['name']} — {relic['effect']} +{relic['power']}")
+    return 0
+
+
+def do_factions(args, wanted: str) -> int:
+    state = read_state()
+    try:
+        item = wave4.pledge_faction(state, wanted) if wanted else wave4.faction_status(state)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    print("Factions de la Cite des Os :")
+    for faction in item["factions"]:
+        marker = "*" if faction["id"] == item["pledge"] else " "
+        print(f" {marker} {faction['id']:<8} {faction['name']} — reputation {faction['reputation']}")
+        print(f"    {faction['motto']}")
+    return 0
+
+
+def do_faction_mission(args, seed: str) -> int:
+    state = read_state()
+    try:
+        item = wave4.faction_mission(state, seed)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    note_succes(args, "faction", reputation=item["reputation"])
+    print(f"Mission : {item['title']} — +{item['gain']} reputation ({item['reputation']}).")
+    return 0
+
+
+def do_nemesis(args, formation: str) -> int:
+    state = read_state()
+    try:
+        item = wave4.confront_nemesis(state, formation) if formation else wave4.nemesis_status(state)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if formation and item["defeated"]:
+        note_succes(args, "nemesis", defeated=True)
+    print(f"Nemesis : {item['name']} — {item['hp']}/{item['max_hp']} PV — rancune {item['grudge']}")
+    print(f"  faiblesse : {item['weakness']} — cicatrices : {', '.join(item['scars']) or 'aucune'}")
+    if formation:
+        print(f"  {item['damage']} degats{' — CONTRE PARFAIT' if item['counter'] else ''}")
+    return 0
+
+
+def do_investigation(args, seed: str) -> int:
+    state = read_state()
+    current = wave4.investigation_status(state)
+    item = wave4.start_investigation(state, seed) if seed or not current.get("active") else current
+    write_state(state)
+    print(f"Enquete : {item['title']} — {len(item['found'])} indice(s), {item['remaining']} restant(s)")
+    print("  suspects : " + ", ".join(item["suspects"]))
+    print("  indices : " + (", ".join(item["found"]) or "aucun"))
+    return 0
+
+
+def do_investigate(args, action: str) -> int:
+    state = read_state()
+    try:
+        item = wave4.investigate(state, action)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item.get("solved"):
+        note_succes(args, "investigation", solved=True)
+    print(f"Enquete {item['title']} — {'RESOLUE' if item.get('solved') else str(item['remaining']) + ' indice(s) restant(s)' }.")
+    print("  trouves : " + (", ".join(item["found"]) or "aucun"))
+    return 0
+
+
+def do_ghost_export(args, destination: str) -> int:
+    expedition = wave3.expedition_status(read_state())
+    decisions = [entry.get("choice", "") for entry in expedition.get("decisions", [])]
+    run = {"seed": expedition.get("seed", date.today().isoformat()),
+           "time_ms": args.ghost_time, "decisions": decisions}
+    try:
+        path = wave4.export_ghost(run, Path(destination).expanduser())
+    except (OSError, ValueError) as exc:
+        print(f"doot : export fantome impossible : {exc}")
+        return 2
+    print(f"doot : fantome de course -> {path}")
+    return 0
+
+
+def do_ghost_race(args, source: str, elapsed: str) -> int:
+    state = read_state()
+    try:
+        item = wave4.race_ghost(state, Path(source).expanduser(), int(elapsed))
+    except (OSError, ValueError) as exc:
+        print(f"doot : course fantome impossible : {exc}")
+        return 2
+    write_state(state)
+    if item["won"]:
+        note_succes(args, "ghost_race", won=True)
+    result = "VICTOIRE" if item["won"] else "DEFAITE"
+    print(f"Course fantome : {result} — toi {item['player_time_ms']} ms, spectre {item['ghost_time_ms']} ms.")
+    return 0
+
+
+def do_adaptive_score(args) -> int:
+    state = read_state()
+    item = wave4.adaptive_score(state, args.score_danger, args.score_combo, args.score_boss)
+    write_state(state)
+    if item["intensity"] >= .5:
+        note_succes(args, "adaptive_score", intensity=item["intensity"])
+    print(f"Partition adaptative — intensite {item['intensity']:.0%}, {item['tempo']} BPM, {item['key']}")
+    print("  " + ", ".join(f"{key} {value:.0%}" for key, value in item["stems"].items()))
+    return 0
+
+
+def do_director(args, destination: str) -> int:
+    try:
+        path = wave4.director_studio(Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : studio realisateur impossible : {exc}")
+        return 2
+    note_succes(args, "director", exported=True)
+    print(f"doot : mode realisateur -> {path}")
+    return 0
+
+
+def do_photo_booth(args, destination: str) -> int:
+    state = read_state()
+    try:
+        path = wave4.photo_booth(state, Path(destination).expanduser(), args.photo_pose)
+    except OSError as exc:
+        print(f"doot : photomaton impossible : {exc}")
+        return 2
+    write_state(state)
+    note_succes(args, "director", exported=True)
+    print(f"doot : portrait du photomaton -> {path}")
+    return 0
+
+
+def do_remote(args, destination: str) -> int:
+    try:
+        item = wave4.remote_card(args.remote_host, args.remote_port,
+                                 Path(destination).expanduser())
+    except (OSError, ValueError) as exc:
+        print(f"doot : appairage impossible : {exc}")
+        return 2
+    print(f"doot : carte QR de telecommande -> {item['path']}")
+    print(f"  adresse locale : {item['url']}")
+    return 0
+
+
+def do_remote_serve(args, destination: str) -> int:
+    try:
+        item = wave4.remote_card(args.remote_host, args.remote_port,
+                                 Path(destination).expanduser())
+    except (OSError, ValueError) as exc:
+        print(f"doot : appairage impossible : {exc}")
+        return 2
+
+    commands = {"doot": ("--once", "--ignore-season"), "pause": ("--snooze", "30m"),
+                "resume": ("--resume",), "stop": ("--stop",)}
+
+    def launch(action: str) -> None:
+        kwargs = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL,
+                  "stderr": subprocess.DEVNULL}
+        if os.name == "nt":
+            kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        else:
+            kwargs["start_new_session"] = True
+        subprocess.Popen([sys.executable, "-m", "doot", *commands[action]], **kwargs)
+
+    print(f"Telecommande locale : {item['url']}")
+    print(f"  QR : {item['path']} — Ctrl+C pour fermer et invalider le jeton.")
+    try:
+        wave4.serve_remote(args.remote_host, args.remote_port, item["token"], launch)
+    except (OSError, KeyboardInterrupt) as exc:
+        if isinstance(exc, KeyboardInterrupt):
+            print("\ndoot : telecommande fermee.")
+            return 0
+        print(f"doot : serveur local impossible : {exc}")
+        return 2
+    return 0
+
+
+def do_workshop_validate(args, source: str) -> int:
+    try:
+        item = wave4.validate_workshop(Path(source).expanduser())
+    except ValueError as exc:
+        print(f"doot : atelier : {exc}")
+        return 2
+    if item["valid"]:
+        note_succes(args, "workshop", valid=True)
+    print(f"Atelier communautaire : {'VALIDE' if item['valid'] else 'REFUSE'} — {item['files']} fichier(s)")
+    print(f"  sha256 {item['sha256']}")
+    for issue in item["issues"]:
+        print(f"  ! {issue}")
+    return 0 if item["valid"] else 2
+
+
+def do_night_calendar(args, days: int) -> int:
+    print("Calendrier vivant de la crypte :")
+    for item in wave4.seasonal_calendar(days=days):
+        print(f"  {item['date']}  {item['name']} — {item['rule']}")
+    return 0
+
+
+def do_glyphs(args) -> int:
+    item = wave4.glyph_status(read_state())
+    print(f"Langue ancienne — {len(item['found'])}/{item['total']} glyphes dechiffres")
+    for glyph in wave4.GLYPHS:
+        print(f"  {glyph}  {wave4.GLYPHS[glyph] if glyph in item['found'] else '???'}")
+    return 0
+
+
+def do_glyph_decode(args, glyph: str, word: str) -> int:
+    state = read_state()
+    try:
+        item = wave4.decipher_glyph(state, glyph, word)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["complete"] and item["fresh"]:
+        note_succes(args, "glyphs", completed=True)
+    print(f"doot : {item['glyph']} signifie {item['word']} — {len(item['found'])}/{item['total']}.")
+    return 0
+
+
+def do_story_constellation(args, destination: str) -> int:
+    try:
+        path = wave4.narrative_constellation(read_state(), Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : constellation narrative impossible : {exc}")
+        return 2
+    print(f"doot : constellation narrative -> {path}")
+    return 0
+
+
+def do_mirror_boss(args) -> int:
+    state = read_state()
+    item = wave4.mirror_boss(state)
+    write_state(state)
+    note_succes(args, "mirror_boss", generated=True)
+    print(f"Boss miroir : {item['name']} — puissance {item['power']}")
+    print(f"  attaque : {item['attack']} — faiblesse : {item['weakness']}")
+    return 0
+
+
 def do_snooze(args, value: str) -> int:
     try:
         until = schedule.duration(value)
@@ -2737,6 +3018,41 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
     parser.add_argument("--coop", nargs="?", const="start", default=None, metavar="ACTION")
     parser.add_argument("--night-infinite", nargs="?", const="", default=None,
                         metavar="GRAINE")
+    parser.add_argument("--city", nargs="?", const="", default=None, metavar="BATIMENT",
+                        help="affiche la Cite des Os ou developpe un batiment")
+    parser.add_argument("--relics", nargs="?", const="", default=None, metavar="RELIQUE",
+                        help="affiche le reliquaire ou equipe/retire une relique")
+    parser.add_argument("--factions", nargs="?", const="", default=None, metavar="FACTION",
+                        help="affiche les factions ou prete serment")
+    parser.add_argument("--faction-mission", nargs="?", const="", default=None, metavar="GRAINE",
+                        help="accomplit une mission pour la faction active")
+    parser.add_argument("--nemesis", nargs="?", const="", default=None, metavar="FORMATION",
+                        help="affiche ou affronte la Nemesis persistante")
+    parser.add_argument("--investigation", nargs="?", const="", default=None, metavar="GRAINE",
+                        help="lance ou reprend une enquete paranormale")
+    parser.add_argument("--investigate", default=None, metavar="ACTION",
+                        help="cherche un indice ou accuse avec accuser:NOM")
+    parser.add_argument("--ghost-export", default=None, metavar="DESTINATION")
+    parser.add_argument("--ghost-time", type=int, default=60000, metavar="MS")
+    parser.add_argument("--ghost-race", nargs=2, default=None, metavar=("FANTOME", "MS"))
+    parser.add_argument("--adaptive-score", action="store_true")
+    parser.add_argument("--score-danger", type=int, default=0, metavar="0-10")
+    parser.add_argument("--score-combo", type=int, default=0, metavar="N")
+    parser.add_argument("--score-boss", action="store_true")
+    parser.add_argument("--director", default=None, metavar="DESTINATION")
+    parser.add_argument("--photo-booth", default=None, metavar="DESTINATION")
+    parser.add_argument("--photo-pose", default="doot", metavar="POSE")
+    parser.add_argument("--remote", default=None, metavar="DESTINATION")
+    parser.add_argument("--remote-serve", default=None, metavar="DESTINATION",
+                        help="sert la telecommande locale jusqu'a Ctrl+C")
+    parser.add_argument("--remote-host", default="127.0.0.1", metavar="ADRESSE")
+    parser.add_argument("--remote-port", type=int, default=8765, metavar="PORT")
+    parser.add_argument("--workshop-validate", default=None, metavar="PACK")
+    parser.add_argument("--night-calendar", nargs="?", const=7, type=int, default=None, metavar="JOURS")
+    parser.add_argument("--glyphs", action="store_true")
+    parser.add_argument("--glyph-decode", nargs=2, default=None, metavar=("GLYPHE", "MOT"))
+    parser.add_argument("--story-constellation", default=None, metavar="DESTINATION")
+    parser.add_argument("--mirror-boss", action="store_true")
     parser.add_argument("--accessibility", action="store_true",
                         help="affiche les reglages d'accessibilite actifs")
     parser.add_argument("--fleet-parade", nargs="?", const="", default=None,
@@ -3180,6 +3496,46 @@ def main(argv: list[str] | None = None) -> int:
         return do_coop(args, args.coop)
     if args.night_infinite is not None:
         return do_night_infinite(args, args.night_infinite)
+    if args.city is not None:
+        return do_city(args, args.city)
+    if args.relics is not None:
+        return do_relics(args, args.relics)
+    if args.faction_mission is not None:
+        return do_faction_mission(args, args.faction_mission)
+    if args.factions is not None:
+        return do_factions(args, args.factions)
+    if args.nemesis is not None:
+        return do_nemesis(args, args.nemesis)
+    if args.investigate:
+        return do_investigate(args, args.investigate)
+    if args.investigation is not None:
+        return do_investigation(args, args.investigation)
+    if args.ghost_export:
+        return do_ghost_export(args, args.ghost_export)
+    if args.ghost_race:
+        return do_ghost_race(args, args.ghost_race[0], args.ghost_race[1])
+    if args.adaptive_score:
+        return do_adaptive_score(args)
+    if args.director:
+        return do_director(args, args.director)
+    if args.photo_booth:
+        return do_photo_booth(args, args.photo_booth)
+    if args.remote:
+        return do_remote(args, args.remote)
+    if args.remote_serve:
+        return do_remote_serve(args, args.remote_serve)
+    if args.workshop_validate:
+        return do_workshop_validate(args, args.workshop_validate)
+    if args.night_calendar is not None:
+        return do_night_calendar(args, args.night_calendar)
+    if args.glyph_decode:
+        return do_glyph_decode(args, args.glyph_decode[0], args.glyph_decode[1])
+    if args.glyphs:
+        return do_glyphs(args)
+    if args.story_constellation:
+        return do_story_constellation(args, args.story_constellation)
+    if args.mirror_boss:
+        return do_mirror_boss(args)
     if args.accessibility:
         return do_accessibility(args)
     if args.melodies:

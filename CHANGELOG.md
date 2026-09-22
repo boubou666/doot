@@ -12,6 +12,27 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.28.0] - 2026-09-22
+
+### Ajouté
+- La Cité des Os devient un quartier général persistant : cinq bâtiments à
+  développer, reliquaire à trois emplacements, builds roguelite, trois factions,
+  réputation et missions reproductibles.
+- Le système Némésis fait revenir un rival plus robuste avec cicatrices,
+  rancune et faiblesse changeante. Les enquêtes paranormales à indices, les
+  courses fantômes vérifiées et le boss miroir prolongent les modes de jeu.
+- Une partition adaptative dose quatre stems selon danger, combo et boss. Le
+  mode Réalisateur exporte des mini-films HTML et le Photomaton crée des PNG
+  originaux sans aucune capture du bureau.
+- La télécommande locale possède une carte QR, un jeton éphémère comparé en
+  temps constant et un serveur HTTP borné à quatre actions. L'Atelier valide
+  taille, manifeste et chemins des packs avant toute installation.
+- Le calendrier vivant annonce les règles nocturnes, la constellation
+  narrative retrace la cité, les factions et la Némésis, et cinq glyphes
+  composent une langue ancienne cachée entre les systèmes.
+- Onze succès illustrés portent le cabinet à 51 médailles et 1 545 points ;
+  chacun possède une nouvelle illustration originale 256×256.
+
 ## [1.27.0] - 2026-09-22
 
 ### Ajouté
@@ -833,7 +854,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.27.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.28.0...HEAD
+[1.28.0]: https://github.com/boubou666/doot/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/boubou666/doot/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/boubou666/doot/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/boubou666/doot/compare/v1.24.0...v1.25.0
