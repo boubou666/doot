@@ -20,7 +20,7 @@ from . import (
     __version__, adventure, art, carte, challenges, choreography, coffre, codex,
     contagion, content, duel, history, image, notification, packs, partage,
     procedural, profiles, registre, replay, rituals, schedule, season, sound, succes,
-    wave3, wave4,
+    wave3, wave4, wave5,
 )
 
 DEFAULT_MIN_SECONDS = 600     # 10 min
@@ -1807,6 +1807,309 @@ def do_mirror_boss(args) -> int:
     return 0
 
 
+# --------------------------------------------------------------- vague 5 -----
+
+def _print_catacomb(item: dict) -> None:
+    if not item.get("active") and "seed" not in item:
+        print("Catacombes : aucune descente active. Lance : doot --catacombs GRAINE")
+        return
+    print(f"Catacombes {item['seed']} — salle {min(item['room'] + 1, len(item['rooms']))}/"
+          f"{len(item['rooms'])} — {item['hp']} PV — torche {item['torch']}")
+    if item.get("completed"):
+        print("  VICTOIRE — le Geometre rend la carte." if item.get("won") else
+              "  DEFAITE — le chemin s'est referme.")
+        return
+    room = item["current"]
+    print(f"  {room['title']} [danger {room['danger']}] — {room['text']}")
+    print(f"  gauche : {room['left']} | droite : {room['right']}")
+
+
+def do_catacombs(args, seed: str) -> int:
+    state = read_state()
+    item = wave5.catacomb_status(state)
+    if seed or not item.get("active"):
+        item = wave5.start_catacomb(state, seed)
+        write_state(state)
+    _print_catacomb(item)
+    return 0
+
+
+def do_catacomb_choose(args, choice: str) -> int:
+    state = read_state()
+    before = wave5.catacomb_status(state)
+    try:
+        item = wave5.choose_catacomb(state, choice)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item.get("won") and not before.get("won"):
+        note_succes(args, "catacomb_victory", won=True)
+    if len(wave5.bestiary_status(state)["found"]) >= 3:
+        note_succes(args, "bestiary", found=len(wave5.bestiary_status(state)["found"]))
+    _print_catacomb(item)
+    return 0
+
+
+def do_time_loop(args, action: str) -> int:
+    state = read_state()
+    before = wave5.time_loop_status(state)
+    try:
+        item = wave5.advance_time_loop(state, action) if action else before
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["broken"] and not before["broken"]:
+        note_succes(args, "time_loop", broken=True)
+    print(f"Boucle temporelle — nuit {item['iteration']} — fissure {item['progress']}/3")
+    print("  BRISEE — le matin se souvient de toi." if item["broken"] else f"  indice : {item['hint']}")
+    return 0
+
+
+def do_familiar_skill(args, skill: str) -> int:
+    state = read_state()
+    before = wave5.familiar_skill_status(state)
+    try:
+        item = wave5.unlock_familiar_skill(state, skill) if skill else before
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if len(item["unlocked"]) > len(before["unlocked"]):
+        note_succes(args, "familiar_skill", unlocked=True)
+    print(f"Talents de {item['id']} — niveau {item['level']}")
+    for talent in item["available"]:
+        print(f"  {'*' if talent in item['unlocked'] else '-'} {talent}")
+    return 0
+
+
+def do_bestiary(args, creature: str) -> int:
+    state = read_state()
+    try:
+        item = wave5.observe_creature(state, creature) if creature else wave5.bestiary_status(state)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if len(item["found"]) >= 3:
+        note_succes(args, "bestiary", found=len(item["found"]))
+    print(f"Bestiaire anime — {len(item['found'])}/{item['total']}")
+    for entry in item["entries"]:
+        print(f"  {'*' if entry['known'] else '?'} {entry['name'] if entry['known'] else 'Entree inconnue'}"
+              + (f" — {entry['lore']}" if entry["known"] else ""))
+    return 0
+
+
+def do_necroforge(args, left: str, right: str) -> int:
+    state = read_state()
+    try:
+        item = wave5.forge_relic(state, left, right)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    note_succes(args, "necroforge", crafted=True)
+    print(f"Forge necromantique : {item['name']} (puissance {item['power']})")
+    print(f"  faveur : {item['boon']} | malediction : {item['curse']}")
+    return 0
+
+
+def do_paranormal_weather(args, days: int) -> int:
+    state = read_state()
+    current = wave5.witness_weather(state)
+    write_state(state)
+    note_succes(args, "paranormal_weather", witnessed=True)
+    print(f"Meteo paranormale — {current['name']} : {current['effect']}")
+    for item in wave5.paranormal_weather(days=days)[1:]:
+        print(f"  {item['date']} — {item['name']} : {item['effect']}")
+    return 0
+
+
+def _print_ritual(item: dict) -> None:
+    print(f"Grand rituel {item['id']} — {len(item['fragments'])}/{item['target']} fragments — "
+          f"{len(item['contributors'])} voix")
+    if item["completed"]:
+        print("  ACCOMPLI — quelque chose repond sous la cite.")
+
+
+def do_collective_ritual(args, seed: str) -> int:
+    state = read_state()
+    item = wave5.ritual_status(state, seed)
+    write_state(state)
+    _print_ritual(item)
+    return 0
+
+
+def do_ritual_offer(args, fragment: str) -> int:
+    state = read_state()
+    before = wave5.ritual_status(state)
+    try:
+        item = wave5.offer_ritual_fragment(state, fragment, partage.identite(paths()["data"]))
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["completed"] and not before["completed"]:
+        note_succes(args, "collective_ritual", completed=True)
+    print(f"doot : fragment signe {item['signature']}")
+    _print_ritual(item)
+    return 0
+
+
+def do_ritual_export(args, destination: str) -> int:
+    try:
+        path = wave5.export_ritual(read_state(), Path(destination).expanduser())
+    except (OSError, ValueError) as exc:
+        print(f"doot : export rituel impossible : {exc}")
+        return 2
+    print(f"doot : capsule rituelle -> {path}")
+    return 0
+
+
+def do_ritual_import(args, source: str) -> int:
+    state = read_state()
+    before = wave5.ritual_status(state)
+    try:
+        item = wave5.import_ritual(state, Path(source).expanduser())
+    except (OSError, ValueError) as exc:
+        print(f"doot : import rituel impossible : {exc}")
+        return 2
+    write_state(state)
+    if item["completed"] and not before["completed"]:
+        note_succes(args, "collective_ritual", completed=True)
+    _print_ritual(item)
+    return 0
+
+
+def do_nemesis_invasion(args, seed: str) -> int:
+    state = read_state()
+    item = wave5.nemesis_invasion_status(state, seed)
+    write_state(state)
+    print(f"Siege de la Nemesis — phase {item['phase']}/3 — cite {item['city_hp']} PV")
+    print("  Repousse !" if item.get("repelled") else "  Choisis : fortifier, contre-attaque ou ruse.")
+    return 0
+
+
+def do_invasion_defend(args, action: str) -> int:
+    state = read_state()
+    before = wave5.nemesis_invasion_status(state)
+    try:
+        item = wave5.defend_nemesis_invasion(state, action)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item.get("repelled") and not before.get("repelled"):
+        note_succes(args, "nemesis_invasion", repelled=True)
+    print(f"Siege — phase {item['phase']}/3 — cite {item['city_hp']} PV — "
+          f"{'repousse' if item.get('repelled') else 'combat en cours'}")
+    return 0
+
+
+def do_tribunal(args, seed: str) -> int:
+    state = read_state()
+    item = wave5.tribunal_status(state)
+    if seed or not item.get("active"):
+        item = wave5.start_tribunal(state, seed)
+    write_state(state)
+    print(f"Tribunal des morts — {item['title']} — accuse : {item['accused']}")
+    print(f"  indices {len(item['found'])}/{len(item['found']) + item['remaining']}")
+    return 0
+
+
+def do_tribunal_action(args, action: str) -> int:
+    state = read_state()
+    try:
+        item = wave5.tribunal_action(state, action)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["verdict"]:
+        note_succes(args, "tribunal", verdict=True)
+        print(f"Verdict : {item['verdict']} — {'JUSTE' if item['just'] else 'la crypte conteste'}")
+    else:
+        print(f"Indice : {item['found'][-1] if item['found'] else 'aucun'}")
+    return 0
+
+
+def do_legacy(args, choice: str) -> int:
+    state = read_state()
+    try:
+        item = wave5.choose_legacy(state, choice)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    note_succes(args, "legacy", chosen=True)
+    print(f"Heritage NG+{item['level']} — {item['choice']} : {item['effect']}")
+    print(f"  « {item['dialogue']} »")
+    return 0
+
+
+def do_campaign_lab(args, destination: str) -> int:
+    try:
+        path = wave5.campaign_lab(Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : laboratoire impossible : {exc}")
+        return 2
+    print(f"doot : laboratoire de campagne -> {path}")
+    return 0
+
+
+def do_campaign_check(args, source: str) -> int:
+    try:
+        item = wave5.validate_campaign(Path(source).expanduser())
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    if item["valid"]:
+        note_succes(args, "campaign_validate", valid=True)
+        print(f"doot : campagne valide — {item['chapters']} chapitre(s) — {item['sha256'][:12]}")
+        return 0
+    print("doot : campagne invalide — " + "; ".join(item["issues"]))
+    return 2
+
+
+def do_personal_museum(args, destination: str) -> int:
+    try:
+        path = wave5.museum_gallery(read_state(), succes.CATALOGUE,
+                                    Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : musee impossible : {exc}")
+        return 2
+    note_succes(args, "personal_museum", exported=True)
+    print(f"doot : musee personnel -> {path}")
+    return 0
+
+
+def do_seals(args) -> int:
+    item = wave5.seal_status(read_state())
+    print(f"Les Sept Sceaux — {len(item['found'])}/{item['total']}")
+    for entry in item["entries"]:
+        print(f"  [{'OUVERT' if entry['found'] else 'FERME '}] {entry['title']} — "
+              f"{entry['hint']} [{entry['source']}]")
+    return 0
+
+
+def do_seal_submit(args, seal: str, answer: str) -> int:
+    state = read_state()
+    try:
+        item = wave5.submit_seal(state, seal, answer)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["complete"]:
+        note_succes(args, "seven_seals", completed=True)
+    print(f"doot : sceau {item['seal']} {'ouvert' if item['fresh'] else 'deja ouvert'} — "
+          f"{len(item['found'])}/{item['total']}")
+    if item["epilogue"]:
+        print("  " + item["epilogue"])
+    return 0
+
+
 def do_snooze(args, value: str) -> int:
     try:
         until = schedule.duration(value)
@@ -3053,6 +3356,29 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
     parser.add_argument("--glyph-decode", nargs=2, default=None, metavar=("GLYPHE", "MOT"))
     parser.add_argument("--story-constellation", default=None, metavar="DESTINATION")
     parser.add_argument("--mirror-boss", action="store_true")
+    parser.add_argument("--catacombs", nargs="?", const="", default=None, metavar="GRAINE",
+                        help="lance ou reprend une descente roguelite ramifiee")
+    parser.add_argument("--catacomb-choose", default=None, metavar="GAUCHE|DROITE")
+    parser.add_argument("--time-loop", nargs="?", const="", default=None, metavar="ACTION")
+    parser.add_argument("--familiar-skill", nargs="?", const="", default=None, metavar="TALENT")
+    parser.add_argument("--bestiary", nargs="?", const="", default=None, metavar="CREATURE")
+    parser.add_argument("--necroforge", nargs=2, default=None, metavar=("MATIERE", "MATIERE"))
+    parser.add_argument("--paranormal-weather", nargs="?", const=7, type=int, default=None,
+                        metavar="JOURS")
+    parser.add_argument("--collective-ritual", nargs="?", const="", default=None, metavar="GRAINE")
+    parser.add_argument("--ritual-offer", default=None, metavar="FRAGMENT")
+    parser.add_argument("--ritual-export", default=None, metavar="DESTINATION")
+    parser.add_argument("--ritual-import", default=None, metavar="CAPSULE")
+    parser.add_argument("--nemesis-invasion", nargs="?", const="", default=None, metavar="GRAINE")
+    parser.add_argument("--invasion-defend", default=None, metavar="ACTION")
+    parser.add_argument("--tribunal", nargs="?", const="", default=None, metavar="GRAINE")
+    parser.add_argument("--tribunal-action", default=None, metavar="ACTION")
+    parser.add_argument("--legacy", default=None, metavar="HERITAGE")
+    parser.add_argument("--campaign-lab", default=None, metavar="DESTINATION")
+    parser.add_argument("--campaign-check", default=None, metavar="CAMPAGNE")
+    parser.add_argument("--personal-museum", default=None, metavar="DESTINATION")
+    parser.add_argument("--seals", action="store_true")
+    parser.add_argument("--seal-submit", nargs=2, default=None, metavar=("SCEAU", "REPONSE"))
     parser.add_argument("--accessibility", action="store_true",
                         help="affiche les reglages d'accessibilite actifs")
     parser.add_argument("--fleet-parade", nargs="?", const="", default=None,
@@ -3536,6 +3862,48 @@ def main(argv: list[str] | None = None) -> int:
         return do_story_constellation(args, args.story_constellation)
     if args.mirror_boss:
         return do_mirror_boss(args)
+    if args.catacomb_choose:
+        return do_catacomb_choose(args, args.catacomb_choose)
+    if args.catacombs is not None:
+        return do_catacombs(args, args.catacombs)
+    if args.time_loop is not None:
+        return do_time_loop(args, args.time_loop)
+    if args.familiar_skill is not None:
+        return do_familiar_skill(args, args.familiar_skill)
+    if args.bestiary is not None:
+        return do_bestiary(args, args.bestiary)
+    if args.necroforge:
+        return do_necroforge(args, args.necroforge[0], args.necroforge[1])
+    if args.paranormal_weather is not None:
+        return do_paranormal_weather(args, args.paranormal_weather)
+    if args.ritual_offer:
+        return do_ritual_offer(args, args.ritual_offer)
+    if args.ritual_export:
+        return do_ritual_export(args, args.ritual_export)
+    if args.ritual_import:
+        return do_ritual_import(args, args.ritual_import)
+    if args.collective_ritual is not None:
+        return do_collective_ritual(args, args.collective_ritual)
+    if args.invasion_defend:
+        return do_invasion_defend(args, args.invasion_defend)
+    if args.nemesis_invasion is not None:
+        return do_nemesis_invasion(args, args.nemesis_invasion)
+    if args.tribunal_action:
+        return do_tribunal_action(args, args.tribunal_action)
+    if args.tribunal is not None:
+        return do_tribunal(args, args.tribunal)
+    if args.legacy:
+        return do_legacy(args, args.legacy)
+    if args.campaign_lab:
+        return do_campaign_lab(args, args.campaign_lab)
+    if args.campaign_check:
+        return do_campaign_check(args, args.campaign_check)
+    if args.personal_museum:
+        return do_personal_museum(args, args.personal_museum)
+    if args.seal_submit:
+        return do_seal_submit(args, args.seal_submit[0], args.seal_submit[1])
+    if args.seals:
+        return do_seals(args)
     if args.accessibility:
         return do_accessibility(args)
     if args.melodies:

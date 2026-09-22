@@ -33,6 +33,11 @@ TOTAUX = (
     "batiments_construits", "builds_reliques", "missions_faction", "nemesis_vaincues",
     "enquetes_resolues", "courses_fantomes", "partitions_adaptatives", "films_realises",
     "packs_atelier_valides", "boss_miroirs", "langues_dechiffrees",
+    "catacombes_maitrisees", "boucles_brisees", "talents_familiers",
+    "entrees_bestiaire", "reliques_forgees", "meteos_observees",
+    "rituels_accomplis", "sieges_repousses", "verdicts_rendus",
+    "heritages_choisis", "campagnes_validees", "musees_exportes",
+    "sept_sceaux_ouverts",
 )
 MAXIMA = ("plus_grande_salve", "voix_max", "serie_defis")
 ENSEMBLES = (
@@ -266,6 +271,48 @@ CATALOGUE = (
            "Dechiffrer les cinq glyphes de la crypte.", 50, 1,
            _valeur("langues_dechiffrees"), True,
            ("Cinq signes parlent sans bouche.", "Leur sens voyage entre les nuits.")),
+    Succes("cartographe_abime", "Cartographe de l'abime",
+           "Sortir vivant des catacombes ramifiees.", 40, 1,
+           _valeur("catacombes_maitrisees")),
+    Succes("horloger_maudit", "L'horloger maudit",
+           "Briser la nuit qui recommence.", 40, 1,
+           _valeur("boucles_brisees"), True,
+           ("Le son vient avant le temps.", "Puis l'immobilite, puis un souffle.")),
+    Succes("compagnon_ascendant", "Compagnon ascendant",
+           "Eveiller un talent avance de familier.", 25, 1,
+           _valeur("talents_familiers")),
+    Succes("naturaliste_outre_tombe", "Naturaliste d'outre-tombe",
+           "Consigner trois creatures dans le bestiaire.", 30, 1,
+           _valeur("entrees_bestiaire")),
+    Succes("forgeron_maudit", "Forgeron maudit",
+           "Fusionner deux matieres dans la forge necromantique.", 30, 1,
+           _valeur("reliques_forgees")),
+    Succes("meteorologue_occulte", "Meteorologue occulte",
+           "Observer une meteo paranormale.", 20, 1,
+           _valeur("meteos_observees")),
+    Succes("ritualiste_collectif", "Ritualiste collectif",
+           "Achever un rituel asynchrone a cinq fragments.", 35, 1,
+           _valeur("rituels_accomplis")),
+    Succes("assiegeur_nemesis", "Briseur de siege",
+           "Repousser une invasion de la Nemesis.", 45, 1,
+           _valeur("sieges_repousses")),
+    Succes("juge_des_morts", "Juge des morts",
+           "Rendre un verdict au tribunal spectral.", 30, 1,
+           _valeur("verdicts_rendus")),
+    Succes("memoire_eternelle", "Memoire eternelle",
+           "Choisir un heritage de Nouvelle Partie +.", 30, 1,
+           _valeur("heritages_choisis")),
+    Succes("dramaturge_interdit", "Dramaturge interdit",
+           "Valider une campagne communautaire coherente.", 25, 1,
+           _valeur("campagnes_validees")),
+    Succes("conservateur_ombres", "Conservateur des ombres",
+           "Ouvrir son musee personnel.", 25, 1,
+           _valeur("musees_exportes")),
+    Succes("septieme_sceau", "Le septieme sceau",
+           "Ouvrir les sept sceaux caches entre les systemes.", 75, 1,
+           _valeur("sept_sceaux_ouverts"), True,
+           ("Chaque sceau vit dans un systeme different.",
+            "Le chemin, l'heure, l'aile, la gueule, la forge, la balance et l'echo.")),
 )
 
 
@@ -499,6 +546,58 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
     elif evenement == "glyphs":
         if details.get("completed") is True:
             _ajoute(stats, "langues_dechiffrees", origine)
+
+    elif evenement == "catacomb_victory":
+        if details.get("won") is True:
+            _ajoute(stats, "catacombes_maitrisees", origine)
+
+    elif evenement == "time_loop":
+        if details.get("broken") is True:
+            _ajoute(stats, "boucles_brisees", origine)
+
+    elif evenement == "familiar_skill":
+        if details.get("unlocked") is True:
+            _ajoute(stats, "talents_familiers", origine)
+
+    elif evenement == "bestiary":
+        if entier(details.get("found")) >= 3:
+            _ajoute(stats, "entrees_bestiaire", origine)
+
+    elif evenement == "necroforge":
+        if details.get("crafted") is True:
+            _ajoute(stats, "reliques_forgees", origine)
+
+    elif evenement == "paranormal_weather":
+        if details.get("witnessed") is True:
+            _ajoute(stats, "meteos_observees", origine)
+
+    elif evenement == "collective_ritual":
+        if details.get("completed") is True:
+            _ajoute(stats, "rituels_accomplis", origine)
+
+    elif evenement == "nemesis_invasion":
+        if details.get("repelled") is True:
+            _ajoute(stats, "sieges_repousses", origine)
+
+    elif evenement == "tribunal":
+        if details.get("verdict") is True:
+            _ajoute(stats, "verdicts_rendus", origine)
+
+    elif evenement == "legacy":
+        if details.get("chosen") is True:
+            _ajoute(stats, "heritages_choisis", origine)
+
+    elif evenement == "campaign_validate":
+        if details.get("valid") is True:
+            _ajoute(stats, "campagnes_validees", origine)
+
+    elif evenement == "personal_museum":
+        if details.get("exported") is True:
+            _ajoute(stats, "musees_exportes", origine)
+
+    elif evenement == "seven_seals":
+        if details.get("completed") is True:
+            _ajoute(stats, "sept_sceaux_ouverts", origine)
 
     return _debloquer(etat, maintenant)
 

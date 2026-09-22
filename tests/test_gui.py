@@ -54,6 +54,13 @@ class CatalogueGraphique(unittest.TestCase):
             "--remote", "--remote-serve", "--remote-host", "--remote-port", "--workshop-validate",
             "--night-calendar", "--glyphs", "--glyph-decode",
             "--story-constellation", "--mirror-boss",
+            "--catacombs", "--catacomb-choose", "--time-loop",
+            "--familiar-skill", "--bestiary", "--necroforge",
+            "--paranormal-weather", "--collective-ritual", "--ritual-offer",
+            "--ritual-export", "--ritual-import", "--nemesis-invasion",
+            "--invasion-defend", "--tribunal", "--tribunal-action", "--legacy",
+            "--campaign-lab", "--campaign-check", "--personal-museum",
+            "--seals", "--seal-submit",
             "--accessibility",
         }
         self.assertEqual(options, attendues)

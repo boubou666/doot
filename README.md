@@ -513,13 +513,62 @@ doot --mirror-boss
 doot --glyphs                         # langue ancienne, succès secret inclus
 ```
 
+## ⏳ Les Sept Sceaux
+
+La cinquième vague prolonge les boucles existantes. Les nouvelles catacombes
+dessinent une route reproductible à passages gauche et droit ; la torche, les
+blessures, le butin et les créatures observées persistent pendant la descente.
+Une boucle temporelle se brise en retrouvant trois gestes dans le bon ordre.
+
+```bash
+doot --catacombs treizieme-porte
+doot --catacomb-choose gauche
+doot --time-loop ecouter
+doot --bestiary veilleur
+doot --familiar-skill echolocation
+doot --necroforge cendre tibia
+doot --paranormal-weather 7
+```
+
+Les grands rituels échangent des fragments signés dans des capsules vérifiées.
+La Némésis assiège la cité en trois phases et le Tribunal des morts transforme
+les indices en verdicts qui restent dans la mémoire de la campagne.
+
+```bash
+doot --collective-ritual nuit-rouge
+doot --ritual-offer souffle-de-cuivre
+doot --ritual-export ./rituel.dootritual
+doot --ritual-import ./rituel.dootritual
+doot --nemesis-invasion siege-13
+doot --invasion-defend fortifier
+doot --tribunal dernier-billet
+doot --tribunal-action examiner
+doot --tribunal-action juger:innocent
+```
+
+Le laboratoire de campagne contrôle les identifiants et les embranchements,
+le musée personnel rassemble toute la collection dans un HTML autonome et
+trois héritages font réagir Nouvelle Partie + aux boucles précédentes.
+
+```bash
+doot --legacy memoire
+doot --campaign-lab ./campaign-lab.html
+doot --campaign-check ./campagne-doot.json
+doot --personal-museum ./musee.html
+doot --seals
+doot --seal-submit chemin gauche-droite-gauche
+```
+
+Chaque Sceau vit dans un système différent. Les sept réponses correctes
+ouvrent un épilogue absent des menus ordinaires et son succès légendaire.
+
 ## 🏆 Les succès
 
 Doot garde sa progression **uniquement en local**, dans le même `state.json` que
 le compteur de mélodies (`doot --paths` montre son emplacement). Aucun compte,
 aucune connexion et aucune télémétrie : les apparitions, les salves, les mélodies,
 les bords imposés, les formations, les événements et les profils débloquent
-51 succès pour un total de 1 545 points.
+64 succès pour un total de 1 995 points.
 
 ```bash
 doot --achievements     # alias français : doot --succes
