@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # Le nom de distribution historique reste `spooky-doot`, meme si le projet
 # n'est plus publie sur PyPI. Le module et la commande restent `doot`.
 name = "spooky-doot"
-version = "1.23.0"
+version = "1.24.0"
 description = "Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er septembre au 31 octobre."
 readme = "README.md"
 # La CI eprouve de nouveau 3.8 : uv telecharge l'interpreteur, la ou les images

@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
-from doot import cli, gui
+from doot import cli, composer_gui, gui
 
 
 class CatalogueGraphique(unittest.TestCase):
@@ -20,7 +20,7 @@ class CatalogueGraphique(unittest.TestCase):
             "--check-update", "--profiles", "--save-profile",
             "--activate-profile", "--deactivate-profile", "--delete-profile",
             "--screens", "--regen-sound", "--version", "--help", "--gui",
-            "--duel-board", "--duel-name",
+            "--duel-board", "--duel-name", "--composer",
         }
         self.assertEqual(options, attendues)
 
@@ -71,6 +71,11 @@ class CompositionCommande(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Melodie"):
             gui.build_command_argv(self.command("play"), {}, {}, self.settings)
 
+    def test_le_compositeur_est_une_page_detachee(self):
+        command = self.command("composer")
+        self.assertTrue(command.detached)
+        self.assertEqual(command.argv, ("--composer",))
+
     def test_la_fusion_accepte_plusieurs_sources(self):
         argv = gui.build_command_argv(
             self.command("merge"),
@@ -110,6 +115,11 @@ class EntreeCli(unittest.TestCase):
     def test_gui_delegue_au_lanceur_sans_preparer_le_daemon(self):
         with mock.patch.object(gui, "main", return_value=27) as lancer:
             self.assertEqual(cli.main(["--gui"]), 27)
+        lancer.assert_called_once_with()
+
+    def test_compositeur_delegue_a_sa_page_sans_preparer_le_daemon(self):
+        with mock.patch.object(composer_gui, "main", return_value=28) as lancer:
+            self.assertEqual(cli.main(["--composer"]), 28)
         lancer.assert_called_once_with()
 
 

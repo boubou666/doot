@@ -231,9 +231,9 @@ et sa sortie s'affiche dans un journal intégré, jusque dans des barres de
 défilement en forme d'os. Le daemon peut être lancé en arrière-plan : fermer le
 grimoire ne l'arrête pas. La GUI utilise Tkinter, déjà requis par l'overlay, et
 n'ajoute donc aucune dépendance. Hors saison, son en-tête devient aussi un
-compte à rebours `J-N` jusqu'au prochain Dooting Time. L'onglet **Compositeur**
-offre une grille de 16 pas façon Mario Paint : choisis les notes, le tempo et
-l'octave, écoute immédiatement, puis sauvegarde le RTTTL dans `melodies/`.
+compte à rebours `J-N` jusqu'au prochain Dooting Time. Le **Compositeur RTTTL**
+s'ouvre dans sa propre fenêtre : grille de 16 pas façon Mario Paint, source
+RTTTL libre, import, écoute automatique après chaque modification et sauvegarde.
 
 ```bash
 doot                         # lance le daemon (c'est ce que fait le démarrage auto)
@@ -243,6 +243,7 @@ doot --once --ignore-season  # idem, même hors saison : pratique pour tester
 doot --play spooky-scary-skeletons   # une mélodie en doots (voir --melodies)
 doot --rickroll              # raccourci de --play rickroll
 doot --melodies              # les mélodies jouables, les tiennes et les fournies
+doot --composer              # l'éditeur RTTTL autonome avec aperçu en direct
 doot --events                # les rencontres rares disponibles
 doot --event pluie           # force une rencontre rare, pour la découvrir
 doot --codex                 # le livre des apparitions déjà découvertes
@@ -907,12 +908,20 @@ le nom d'une mélodie fournie la remplace, comme un son ou une image.
 Une ligne est une voix. Pour jouer plusieurs notes en parallèle, mets autant
 de sonneries RTTTL complètes que tu veux, une par ligne, toutes au même tempo.
 
-Si écrire cette syntaxe à la main ne t'amuse pas, ouvre `doot --gui`, onglet
-**Compositeur**. Chaque colonne représente un seizième de note ; un clic pose
-une hauteur, un autre clic dans la même colonne la remplace, et recliquer la
-même note l'efface. Les cases vides deviennent des silences. Le bouton
-**Écouter** joue un brouillon même hors saison et **Sauvegarder** crée un nom
-neuf sans écraser une mélodie existante.
+Si écrire cette syntaxe à la main ne t'amuse pas, ouvre `doot --composer` ou
+choisis **Ouvrir le compositeur RTTTL** dans le grimoire. Sa fenêtre autonome
+offre une grille où chaque colonne représente un seizième de note ; un clic
+pose une hauteur, un autre clic dans la même colonne la remplace, et recliquer
+la même note l'efface. Après une courte pause, chaque changement est rendu et
+joué automatiquement, sans faire surgir l'overlay.
+
+**Importer…** ouvre directement un `.rtttl`. Une partition simple de seize
+doubles-croches peut rejoindre la grille ; les durées, octaves ou voix plus
+riches restent intactes dans l'éditeur de source, qui accepte tout ce que le
+moteur RTTTL sait jouer. La conversion vers la grille est toujours explicite :
+le compositeur ne raccourcit ni n'aplatit silencieusement un morceau importé.
+**Enregistrer** met à jour le fichier après confirmation, tandis
+qu'**Enregistrer sous…** crée une copie où tu veux.
 
 Les voix sont additionnées et chacune est ramenée à `1 / nombre_de_voix` : le
 mix ne sature pas, quel que soit le nombre de voix. Chaque ligne affiche aussi
