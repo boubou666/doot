@@ -12,6 +12,25 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.29.0] - 2026-09-22
+
+### Ajouté
+- Les catacombes ramifiées prolongent les expéditions avec carte déterministe,
+  passages gauche et droit, torche, butin, bestiaire et Gardien final.
+- Une boucle temporelle à énigme, des talents avancés de familiers, un
+  bestiaire animé et une forge nécromantique enrichissent la progression
+  persistante avec faveurs et malédictions.
+- La météo paranormale modifie chaque nuit. Les grands rituels assemblent cinq
+  fragments signés dans des capsules vérifiées, sans compte ni serveur.
+- La Némésis peut assiéger la Cité des Os en trois phases. Le Tribunal des
+  morts permet d'examiner des indices et de rendre un verdict persistant.
+- Nouvelle Partie + reçoit trois héritages mémoriels. Le laboratoire de
+  campagnes valide le graphe narratif et le musée personnel expose succès,
+  reliques forgées et créatures dans un HTML autonome.
+- Les Sept Sceaux cachent une grande énigme entre sept systèmes et révèlent un
+  épilogue secret. Treize succès illustrés portent le cabinet à 64 médailles et
+  1 995 points, avec une illustration originale 256×256 pour chacun.
+
 ## [1.28.0] - 2026-09-22
 
 ### Ajouté
@@ -854,7 +873,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.28.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.29.0...HEAD
+[1.29.0]: https://github.com/boubou666/doot/compare/v1.28.0...v1.29.0
 [1.28.0]: https://github.com/boubou666/doot/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/boubou666/doot/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/boubou666/doot/compare/v1.25.0...v1.26.0

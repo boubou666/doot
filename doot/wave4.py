@@ -181,13 +181,17 @@ def faction_mission(state: dict, seed: str = "") -> dict:
     rng = random.Random(f"{faction}:{seed or date.today().isoformat()}:{index}")
     verbs = ("escorter", "accorder", "retrouver", "defier", "ecouter")
     places = ("le clocher inverse", "le bal immobile", "la nef sans echo", "l'ossuaire bleu")
-    gain = rng.randint(2, 5)
+    weather = state.get("wave5", {}).get("active_weather", {})
+    weather_id = weather.get("id") if isinstance(weather, dict) else ""
+    gain = rng.randint(2, 5) + (2 if weather_id == "pluie_os" else 0)
+    if weather_id == "brouillard":
+        gain = max(1, gain - 1)
     data["missions"] = index + 1
     data["reputation"][faction] += gain
     city_status(state)
     _root(state)["city"]["bones"] += gain
     return {"faction": faction, "title": f"{rng.choice(verbs).title()} {rng.choice(places)}",
-            "gain": gain, "reputation": data["reputation"][faction]}
+            "gain": gain, "reputation": data["reputation"][faction], "weather": weather_id}
 
 
 NEMESIS_NAMES = ("Baron Fracas", "Maestro Sans-Visage", "Dame Contretemps", "Le Grand Radius")
@@ -317,13 +321,21 @@ def race_ghost(state: dict, source: Path, player_time_ms: int) -> dict:
 def adaptive_score(state: dict, danger: int = 0, combo: int = 0, boss: bool = False) -> dict:
     danger = max(0, min(10, int(danger)))
     combo = max(0, min(99, int(combo)))
-    intensity = min(1.0, .08 * danger + .025 * combo + (.25 if boss else 0))
+    weather = state.get("wave5", {}).get("active_weather", {})
+    weather_id = weather.get("id") if isinstance(weather, dict) else ""
+    intensity = min(1.0, .08 * danger + .025 * combo + (.25 if boss else 0)
+                    + (.15 if weather_id == "lune_rouge" else 0))
     stems = {"pulse": round(.25 + intensity * .75, 2),
              "bones": round(max(0, intensity - .18), 2),
              "choir": round(max(0, intensity - .48), 2),
              "brass": round(.2 + (.8 if boss else intensity * .4), 2)}
+    if weather_id == "orage_silencieux":
+        stems["bones"] = 0
+    if weather_id == "eclipse":
+        stems["choir"] = min(1.0, round(stems["choir"] + .2, 2))
     result = {"intensity": round(intensity, 2), "tempo": 72 + round(intensity * 76),
-              "key": "d-mineur" if danger < 7 else "triton", "stems": stems}
+              "key": "d-mineur" if danger < 7 else "triton", "stems": stems,
+              "weather": weather_id}
     _root(state)["adaptive_score"] = result
     return result
 
