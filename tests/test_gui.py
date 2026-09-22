@@ -68,6 +68,8 @@ class CatalogueGraphique(unittest.TestCase):
             "--musical-battle", "--battle-note", "--funeral-house",
             "--house-mission", "--mod-forge", "--mod-validate",
             "--train-replay", "--lost-station", "--thirteenth-bell",
+            "--grand-retour", "--grand-retour-restart", "--grand-retour-choose",
+            "--grand-retour-secret", "--grand-retour-export",
             "--accessibility",
         }
         self.assertEqual(options, attendues)
@@ -92,6 +94,11 @@ class CatalogueGraphique(unittest.TestCase):
             if not (gui.ASSETS_DIR / command.image).is_file()
         ]
         self.assertEqual(absentes, [])
+
+    def test_l_enigme_se_consulte_sans_reponse(self):
+        command = next(item for item in gui.COMMANDS if item.key == "grand-retour-secret")
+        argv = gui.build_command_argv(command, {}, {}, (), strict=True)
+        self.assertEqual(argv, ["--grand-retour-secret"])
 
 
 class CompositionCommande(unittest.TestCase):

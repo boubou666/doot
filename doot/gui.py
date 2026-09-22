@@ -19,7 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from . import challenges, composer, history, registre, season, succes
+from . import challenges, composer, grand_retour, history, registre, season, succes
 
 
 ASSETS_DIR = Path(__file__).with_name("assets")
@@ -760,6 +760,25 @@ COMMANDS: tuple[CommandSpec, ...] = (
     CommandSpec("thirteenth-bell", "La Treizieme Cloche", "Reunis six echos et propose le nombre interdit.",
                 parameters=(ParameterSpec("--thirteenth-bell", "Reponse", "treize", False),),
                 image="success/treizieme_cloche.png"),
+    CommandSpec("grand-retour", "La Nuit du Grand Retour",
+                "Commence ou reprend la campagne en sept nuits et ouvre son journal.",
+                ("--grand-retour",), image="success/veilleur_sept_nuits.png"),
+    CommandSpec("grand-retour-choose", "Choisir dans le Grand Retour",
+                "Grave une decision qui change les nuits suivantes.",
+                parameters=(ParameterSpec("--grand-retour-choose", "Choix", "proteger"),),
+                image="success/lien_indefectible.png"),
+    CommandSpec("grand-retour-restart", "Rejouer le Grand Retour",
+                "Recommence apres une fin sans effacer les fins decouvertes.",
+                ("--grand-retour-restart",), image="success/trois_destins.png"),
+    CommandSpec("grand-retour-secret", "L'Aube invisible",
+                "Cherche les sept souvenirs de l'epilogue cache.",
+                ("--grand-retour-secret",),
+                parameters=(ParameterSpec("", "Reponse", "aube", False, False),),
+                image="success/aube_cachee.png"),
+    CommandSpec("grand-retour-export", "Exporter le journal",
+                "Cree un journal HTML autonome du Grand Retour.",
+                parameters=(ParameterSpec("--grand-retour-export", "Destination", "grand-retour.html"),),
+                image="success/veilleur_sept_nuits.png"),
     CommandSpec("accessibility", "Accessibilite", "Resume les protections visuelles et sonores.",
                 ("--accessibility",), image="logo.png"),
     CommandSpec(
@@ -783,6 +802,7 @@ ONGLETS_ETAT = {
     "stats": ("_refresh_registre", "registre_tab"),
     "history": ("_refresh_chronicles", "chronicles_tab"),
     "challenge": ("_refresh_chronicles", "chronicles_tab"),
+    "grand-retour": ("_refresh_chronicles", "chronicles_tab"),
 }
 
 
@@ -1640,7 +1660,9 @@ class DootApp:
         self.chronicle_summary.set(
             f"Defi : {challenge.title} — {marker}  ·  serie {state.get('challenge_streak', 0)} jour(s)"
         )
-        lines = ["STATISTIQUES DES 100 DERNIERES ENTREES"]
+        lines = ["LA NUIT DU GRAND RETOUR"]
+        lines.extend(grand_retour.journal_lines(state))
+        lines.append("\nSTATISTIQUES DES 100 DERNIERES ENTREES")
         lines.extend(f"  {kind:<18} {count:>4}" for kind, count in sorted(counts.items()))
         lines.append("\nCHRONOLOGIE")
         for entry in reversed(entries):

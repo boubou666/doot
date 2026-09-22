@@ -18,7 +18,7 @@ from pathlib import Path
 
 from . import (
     __version__, adventure, art, carte, challenges, choreography, coffre, codex,
-    contagion, content, duel, history, image, notification, packs, partage,
+    contagion, content, duel, grand_retour, history, image, notification, packs, partage,
     procedural, profiles, registre, replay, rituals, schedule, season, sound, succes,
     wave3, wave4, wave5, wave6,
 )
@@ -2427,6 +2427,70 @@ def do_thirteenth_bell(args, answer: str) -> int:
     return 0
 
 
+# --------------------------------------------------------------- vague 7 -----
+
+def do_grand_retour(args, restart: bool = False) -> int:
+    state = read_state()
+    try:
+        item = grand_retour.start(state, restart=restart)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    print("\n".join(grand_retour.journal_lines(state)))
+    return 0
+
+
+def do_grand_retour_choose(args, action: str) -> int:
+    state = read_state()
+    before = grand_retour.status(state)
+    try:
+        item = grand_retour.choose(state, action)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["completed"] and not before["completed"]:
+        note_succes(args, "grand_retour", completed=True,
+                    loyal=item["companion"] == "fidele",
+                    endings=len(item["endings"]))
+    print("\n".join(grand_retour.journal_lines(state)))
+    return 0
+
+
+def do_grand_retour_secret(args, answer: str) -> int:
+    state = read_state()
+    before = grand_retour.secret_status(state)
+    try:
+        item = grand_retour.solve_secret(state, answer) if answer else before
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    if item["solved"] and not before["solved"]:
+        write_state(state)
+        note_succes(args, "grand_retour_secret", solved=True)
+    print("Aube invisible — " + ("REVELEE" if item["solved"] else
+                                   "sept souvenirs a reunir"))
+    for clue in item["clues"]:
+        print(f"  [{'*' if clue['found'] else ' '}] Nuit {clue['night']} : {clue['hint']}")
+    if item["riddle"]:
+        print("  " + item["riddle"])
+    if item["epilogue"]:
+        print("  " + item["epilogue"])
+    return 0
+
+
+def do_grand_retour_export(args, destination: str) -> int:
+    state = read_state()
+    try:
+        path = grand_retour.export_journal(state, Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : export du journal impossible : {exc}")
+        return 2
+    print(f"doot : journal du Grand Retour -> {path}")
+    return 0
+
+
 def do_snooze(args, value: str) -> int:
     try:
         until = schedule.duration(value)
@@ -3720,6 +3784,16 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
     parser.add_argument("--train-replay", default=None, metavar="DESTINATION")
     parser.add_argument("--lost-station", nargs="?", const="", default=None, metavar="ACTION")
     parser.add_argument("--thirteenth-bell", nargs="?", const="", default=None, metavar="REPONSE")
+    parser.add_argument("--grand-retour", action="store_true",
+                        help="commence ou reprend la campagne en sept nuits")
+    parser.add_argument("--grand-retour-restart", action="store_true",
+                        help="rejoue les sept nuits apres une fin")
+    parser.add_argument("--grand-retour-choose", default=None, metavar="CHOIX",
+                        help="prend une decision dans la nuit courante")
+    parser.add_argument("--grand-retour-secret", nargs="?", const="", default=None,
+                        metavar="REPONSE", help="examine ou resout l'enigme de l'aube")
+    parser.add_argument("--grand-retour-export", default=None, metavar="HTML",
+                        help="exporte un journal HTML autonome")
     parser.add_argument("--accessibility", action="store_true",
                         help="affiche les reglages d'accessibilite actifs")
     parser.add_argument("--fleet-parade", nargs="?", const="", default=None,
@@ -4283,6 +4357,16 @@ def main(argv: list[str] | None = None) -> int:
         return do_lost_station(args, args.lost_station)
     if args.thirteenth_bell is not None:
         return do_thirteenth_bell(args, args.thirteenth_bell)
+    if args.grand_retour_choose:
+        return do_grand_retour_choose(args, args.grand_retour_choose)
+    if args.grand_retour_restart:
+        return do_grand_retour(args, restart=True)
+    if args.grand_retour:
+        return do_grand_retour(args)
+    if args.grand_retour_secret is not None:
+        return do_grand_retour_secret(args, args.grand_retour_secret)
+    if args.grand_retour_export:
+        return do_grand_retour_export(args, args.grand_retour_export)
     if args.accessibility:
         return do_accessibility(args)
     if args.melodies:

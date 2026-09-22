@@ -12,6 +12,20 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.31.0] - 2026-09-22
+
+### Ajouté
+- La Nuit du Grand Retour traverse sept scènes liées au Dernier Train, à
+  l'équipage spectral, à la Cité des Os, aux maisons funéraires, à la Némésis
+  et au combat musical. Les acquis de ces modes ouvrent des décisions
+  supplémentaires ; confiance, espoir et volonté modifient les scènes et la fin.
+- Trois fins restent découvertes après chaque nouvelle partie. Le journal
+  persistant se lit dans la CLI et l'onglet Chroniques de la GUI, et s'exporte
+  en HTML autonome avec prise en charge des mouvements réduits.
+- Sept souvenirs et un équipage fidèle ouvrent une énigme secrète à l'aube.
+  Quatre succès avec quatre illustrations originales portent le cabinet à
+  83 médailles et 2 745 points.
+
 ## [1.30.0] - 2026-09-22
 
 ### Ajouté
@@ -893,7 +907,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.30.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.31.0...HEAD
+[1.31.0]: https://github.com/boubou666/doot/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/boubou666/doot/compare/v1.29.0...v1.30.0
 [1.29.0]: https://github.com/boubou666/doot/compare/v1.28.0...v1.29.0
 [1.28.0]: https://github.com/boubou666/doot/compare/v1.27.0...v1.28.0
