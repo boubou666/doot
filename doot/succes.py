@@ -37,7 +37,12 @@ TOTAUX = (
     "entrees_bestiaire", "reliques_forgees", "meteos_observees",
     "rituels_accomplis", "sieges_repousses", "verdicts_rendus",
     "heritages_choisis", "campagnes_validees", "musees_exportes",
-    "sept_sceaux_ouverts",
+    "sept_sceaux_ouverts", "trains_arrives", "equipages_complets",
+    "affaires_rail_resolues", "artefacts_restaures", "contrefacons_detectees",
+    "propheties_accomplies", "gazettes_exportees", "duels_musicaux_gagnes",
+    "maisons_honorees", "mods_valides", "replays_train_exportes",
+    "treizieme_cloche_sonnee", "gare_zero_visitee",
+    "collections_archeologiques", "reseaux_ferroviaires_maitrises",
 )
 MAXIMA = ("plus_grande_salve", "voix_max", "serie_defis")
 ENSEMBLES = (
@@ -313,6 +318,55 @@ CATALOGUE = (
            _valeur("sept_sceaux_ouverts"), True,
            ("Chaque sceau vit dans un systeme different.",
             "Le chemin, l'heure, l'aile, la gueule, la forge, la balance et l'echo.")),
+    Succes("conducteur_outre_tombe", "Conducteur d'outre-tombe",
+           "Atteindre un terminus du Dernier Train.", 35, 1,
+           _valeur("trains_arrives")),
+    Succes("equipage_eternel", "Equipage eternel",
+           "Recruter quatre membres de l'equipage spectral.", 30, 1,
+           _valeur("equipages_complets")),
+    Succes("limier_du_rail", "Limier du rail",
+           "Resoudre une affaire a bord du train fantome.", 30, 1,
+           _valeur("affaires_rail_resolues")),
+    Succes("archeologue_interdit", "Archeologue interdit",
+           "Restaurer un artefact exhume des lignes mortes.", 30, 1,
+           _valeur("artefacts_restaures")),
+    Succes("commissaire_reliques", "Commissaire des reliques",
+           "Demasquer une contrefacon au marche noir.", 25, 1,
+           _valeur("contrefacons_detectees")),
+    Succes("oracle_cendres", "Oracle des cendres",
+           "Accomplir une prophetie hebdomadaire.", 30, 1,
+           _valeur("propheties_accomplies")),
+    Succes("gazettier_crypte", "Gazettier de la crypte",
+           "Imprimer la Gazette de la Crypte.", 20, 1,
+           _valeur("gazettes_exportees")),
+    Succes("virtuose_funebre", "Virtuose funebre",
+           "Remporter un combat musical du train.", 40, 1,
+           _valeur("duels_musicaux_gagnes")),
+    Succes("heritier_funeraire", "Heritier funeraire",
+           "Gagner trois faveurs d'une maison rivale.", 30, 1,
+           _valeur("maisons_honorees")),
+    Succes("moddeur_maudit", "Moddeur maudit",
+           "Forger et valider une capsule de mod sure.", 25, 1,
+           _valeur("mods_valides")),
+    Succes("cineaste_spectral", "Cineaste spectral",
+           "Monter le replay cinematographique d'un voyage.", 25, 1,
+           _valeur("replays_train_exportes")),
+    Succes("treizieme_cloche", "La Treizieme Cloche",
+           "Faire sonner le coup que le cadran refuse de compter.", 75, 1,
+           _valeur("treizieme_cloche_sonnee"), True,
+           ("Six echos voyagent dans le Dernier Train.",
+            "Le rail, le choeur, la preuve, la relique, l'accord et le serment.")),
+    Succes("gare_inexistante", "La gare inexistante",
+           "Monter dans le train de la Gare Zero.", 50, 1,
+           _valeur("gare_zero_visitee"), True,
+           ("Une gare manque a toutes les cartes.",
+            "Echoue a trois propheties de trois manieres differentes.")),
+    Succes("collectionneur_fragments", "Collectionneur de fragments",
+           "Exhumer les neuf fragments archeologiques.", 25, 1,
+           _valeur("collections_archeologiques")),
+    Succes("roi_dernier_train", "Roi du Dernier Train",
+           "Atteindre le terminus des trois lignes fantomes.", 60, 1,
+           _valeur("reseaux_ferroviaires_maitrises")),
 )
 
 
@@ -598,6 +652,62 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
     elif evenement == "seven_seals":
         if details.get("completed") is True:
             _ajoute(stats, "sept_sceaux_ouverts", origine)
+
+    elif evenement == "ghost_train":
+        if details.get("arrived") is True and details.get("fresh") is True:
+            _ajoute(stats, "trains_arrives", origine)
+        if entier(details.get("routes")) >= 3:
+            _ajoute(stats, "reseaux_ferroviaires_maitrises", origine)
+
+    elif evenement == "spectral_crew":
+        if details.get("complete") is True:
+            _ajoute(stats, "equipages_complets", origine)
+
+    elif evenement == "rail_case":
+        if details.get("solved") is True:
+            _ajoute(stats, "affaires_rail_resolues", origine)
+
+    elif evenement == "archaeology":
+        if details.get("restored") is True:
+            _ajoute(stats, "artefacts_restaures", origine)
+        if entier(details.get("fragments")) >= 9:
+            _ajoute(stats, "collections_archeologiques", origine)
+
+    elif evenement == "black_market":
+        if details.get("detected") is True:
+            _ajoute(stats, "contrefacons_detectees", origine)
+
+    elif evenement == "prophecy":
+        if details.get("completed") is True:
+            _ajoute(stats, "propheties_accomplies", origine)
+
+    elif evenement == "crypt_gazette":
+        if details.get("exported") is True:
+            _ajoute(stats, "gazettes_exportees", origine)
+
+    elif evenement == "musical_battle":
+        if details.get("won") is True:
+            _ajoute(stats, "duels_musicaux_gagnes", origine)
+
+    elif evenement == "funeral_house":
+        if entier(details.get("reputation")) >= 3:
+            _ajoute(stats, "maisons_honorees", origine)
+
+    elif evenement == "mod_capsule":
+        if details.get("valid") is True:
+            _ajoute(stats, "mods_valides", origine)
+
+    elif evenement == "train_replay":
+        if details.get("exported") is True:
+            _ajoute(stats, "replays_train_exportes", origine)
+
+    elif evenement == "thirteenth_bell":
+        if details.get("rung") is True:
+            _ajoute(stats, "treizieme_cloche_sonnee", origine)
+
+    elif evenement == "lost_station":
+        if details.get("visited") is True:
+            _ajoute(stats, "gare_zero_visitee", origine)
 
     return _debloquer(etat, maintenant)
 

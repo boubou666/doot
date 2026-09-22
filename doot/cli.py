@@ -20,7 +20,7 @@ from . import (
     __version__, adventure, art, carte, challenges, choreography, coffre, codex,
     contagion, content, duel, history, image, notification, packs, partage,
     procedural, profiles, registre, replay, rituals, schedule, season, sound, succes,
-    wave3, wave4, wave5,
+    wave3, wave4, wave5, wave6,
 )
 
 DEFAULT_MIN_SECONDS = 600     # 10 min
@@ -2110,6 +2110,323 @@ def do_seal_submit(args, seal: str, answer: str) -> int:
     return 0
 
 
+# --------------------------------------------------------------- vague 6 -----
+
+def _print_ghost_train(item: dict) -> None:
+    if not item.get("active") and "route" not in item:
+        print("Dernier Train : aucun voyage actif. Lance : doot --ghost-train GRAINE")
+        return
+    print(f"Dernier Train — ligne {item['route']} — "
+          f"gare {min(item['station'] + 1, len(item['stations']))}/{len(item['stations'])} — "
+          f"integrite {item['integrity']} — charbon {item['coal']}")
+    if item.get("completed"):
+        print("  TERMINUS ATTEINT." if item.get("arrived") else "  LE TRAIN S'EST PERDU.")
+        print("  lignes achevees : " + (", ".join(item["completed_routes"]) or "aucune"))
+        return
+    station = item["current"]
+    print(f"  {station['name']} [danger {station['danger']}] — {station['signal']}")
+    print("  actions : explorer, negocier, accelerer")
+
+
+def do_ghost_train(args, seed: str) -> int:
+    state = read_state()
+    item = wave6.ghost_train_status(state)
+    try:
+        if seed or args.train_route or not item.get("active"):
+            item = wave6.start_ghost_train(state, seed, args.train_route)
+            write_state(state)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    _print_ghost_train(item)
+    return 0
+
+
+def do_train_choose(args, action: str) -> int:
+    state = read_state()
+    before_routes = set(wave6.completed_train_routes(state))
+    try:
+        item = wave6.choose_ghost_train(state, action)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    fresh = bool(item.get("arrived") and item.get("route") not in before_routes)
+    if fresh:
+        note_succes(args, "ghost_train", arrived=True, fresh=True,
+                    routes=len(item["completed_routes"]))
+    _print_ghost_train(item)
+    return 0
+
+
+def do_spectral_crew(args, member: str) -> int:
+    state = read_state()
+    before = wave6.spectral_crew_status(state)
+    try:
+        item = wave6.recruit_spectral_crew(state, member) if member else before
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["complete"] and not before["complete"]:
+        note_succes(args, "spectral_crew", complete=True)
+    print(f"Equipage spectral — {len(item['recruited'])}/{item['total']}")
+    for crew in item["members"]:
+        print(f"  {'*' if crew['recruited'] else '-'} {crew['name']} — {crew['role']} : {crew['gift']}")
+    return 0
+
+
+def do_rail_case(args, seed: str) -> int:
+    state = read_state()
+    item = wave6.rail_case_status(state)
+    if seed or not item.get("active"):
+        item = wave6.start_rail_case(state, seed)
+        write_state(state)
+    print(f"Affaire du rail — {item['title']}")
+    print(f"  indices {len(item['found'])}/{len(item['found']) + item['remaining']} — "
+          f"suspects : {', '.join(item['suspects'])}")
+    return 0
+
+
+def do_rail_investigate(args, action: str) -> int:
+    state = read_state()
+    before = wave6.rail_case_status(state)
+    try:
+        item = wave6.investigate_rail_case(state, action)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["solved"] and not before.get("solved"):
+        note_succes(args, "rail_case", solved=True)
+    if item["verdict"]:
+        print(f"Affaire classee — accuse : {item['verdict']} — "
+              f"{'RESOLUE' if item['solved'] else 'fausse piste'}")
+    else:
+        print(f"Affaire du rail — {len(item['found'])} indice(s), "
+              f"{len(item['questioned'])} interrogatoire(s)")
+    return 0
+
+
+def do_archaeology(args, site: str) -> int:
+    state = read_state()
+    try:
+        item = wave6.dig_archaeology(state, site) if site else wave6.archaeology_status(state)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if len(item["fragments"]) >= item["fragment_total"]:
+        note_succes(args, "archaeology", restored=False, fragments=len(item["fragments"]))
+    print(f"Archeologie interdite — {len(item['fragments'])}/{item['fragment_total']} fragments — "
+          f"{len(item['restored'])} artefact(s) restaure(s)")
+    if site:
+        print(f"  {item['site']} : {item['fragment']} {'(nouveau)' if item['fresh'] else '(deja connu)'}")
+    for entry in item["sites"]:
+        print(f"  {entry['id']} — {entry['found']}/{entry['total']} — {entry['artifact']}")
+    return 0
+
+
+def do_restore_artifact(args, site: str) -> int:
+    state = read_state()
+    try:
+        item = wave6.restore_artifact(state, site)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["fresh"]:
+        note_succes(args, "archaeology", restored=True, fragments=len(item["fragments"]))
+    print(f"doot : artefact restaure — {item['artifact']}")
+    return 0
+
+
+def do_black_market(args, action: str) -> int:
+    state = read_state()
+    try:
+        item = (wave6.black_market_action(state, action, args.market_seed) if action else
+                wave6.black_market_status(state, args.market_seed))
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item.get("detected"):
+        note_succes(args, "black_market", detected=True)
+    print(f"Marche noir {item['id']} — {item['tickets']} billets")
+    for offer in item["offers"]:
+        verdict = f" — {offer['verdict']}" if offer.get("verdict") else ""
+        sold = " — vendu" if offer.get("bought") else ""
+        print(f"  {offer['id']} — {offer['name']} — {offer['price']} billets — "
+              f"rival {offer['rival']}{verdict}{sold}")
+    return 0
+
+
+def do_prophecy(args, action: str) -> int:
+    state = read_state()
+    before = wave6.prophecy_status(state)
+    try:
+        item = wave6.resolve_prophecy(state, action) if action else before
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["completed"] and not before["completed"]:
+        note_succes(args, "prophecy", completed=True)
+    print(f"Prophetie {item['id']} — {item['text']}")
+    print("  accomplie" if item["completed"] else
+          f"  echouee ({item['reason']})" if item["failed"] else "  en attente")
+    if item["lost_station"]:
+        print("  Une gare absente vient d'apparaitre sur la carte.")
+    return 0
+
+
+def do_crypt_gazette(args, destination: str) -> int:
+    state = read_state()
+    try:
+        path = wave6.export_crypt_gazette(state, Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : gazette impossible : {exc}")
+        return 2
+    write_state(state)
+    note_succes(args, "crypt_gazette", exported=True)
+    print(f"doot : Gazette de la Crypte -> {path}")
+    return 0
+
+
+def do_musical_battle(args, seed: str) -> int:
+    state = read_state()
+    item = wave6.musical_battle_status(state)
+    if seed or not item.get("active"):
+        item = wave6.start_musical_battle(state, seed)
+        write_state(state)
+    print(f"Combat musical — mesure {item['round'] + 1}/{len(item['score'])} — "
+          f"toi {item['player_hp']} PV / spectre {item['boss_hp']} PV")
+    print(f"  signal : {item['cue']}" if item.get("active") else
+          "  VICTOIRE" if item.get("won") else "  silence fatal")
+    return 0
+
+
+def do_battle_note(args, note: str) -> int:
+    state = read_state()
+    before = wave6.musical_battle_status(state)
+    try:
+        item = wave6.musical_battle_action(state, note)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item.get("won") and not before.get("won"):
+        note_succes(args, "musical_battle", won=True)
+    print(f"Combat musical — toi {item['player_hp']} PV / spectre {item['boss_hp']} PV")
+    print(f"  signal suivant : {item['cue']}" if item.get("active") else
+          "  VICTOIRE" if item.get("won") else "  DEFAITE")
+    return 0
+
+
+def do_funeral_house(args, house: str) -> int:
+    state = read_state()
+    try:
+        item = wave6.pledge_funeral_house(state, house) if house else wave6.funeral_house_status(state)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    print(f"Maisons funeraires — serment : {item.get('name') or 'aucun'} — "
+          f"reputation {item['reputation']}")
+    for entry in item["houses"]:
+        print(f"  {entry['id']} — {entry['name']} : {entry['motto']}")
+    if item.get("pledged"):
+        print(f"  prochaine ceremonie : {item['mission']}")
+    return 0
+
+
+def do_house_mission(args, strategy: str) -> int:
+    state = read_state()
+    before = wave6.funeral_house_status(state)
+    try:
+        item = wave6.funeral_house_mission(state, strategy)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["reputation"] >= 3 and before["reputation"] < 3:
+        note_succes(args, "funeral_house", reputation=item["reputation"])
+    print(f"Mission de maison — {'reussie' if item['success'] else 'ratee'} — "
+          f"reputation {item['reputation']} — prochaine : {item['mission']}")
+    return 0
+
+
+def do_mod_forge(args, destination: str, name: str, theme: str) -> int:
+    try:
+        path = wave6.create_mod_capsule(Path(destination).expanduser(), name, theme)
+        item = wave6.validate_mod_capsule(path)
+    except (OSError, ValueError) as exc:
+        print(f"doot : creation du mod impossible : {exc}")
+        return 2
+    note_succes(args, "mod_capsule", valid=True)
+    print(f"doot : mod {item['name']} ({item['theme']}) -> {path}")
+    return 0
+
+
+def do_mod_validate(args, source: str) -> int:
+    try:
+        item = wave6.validate_mod_capsule(Path(source).expanduser())
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    note_succes(args, "mod_capsule", valid=True)
+    print(f"doot : capsule valide — {item['name']} — {item['sha256'][:12]}")
+    return 0
+
+
+def do_train_replay(args, destination: str) -> int:
+    state = read_state()
+    try:
+        path = wave6.export_scene_replay(state, Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : replay impossible : {exc}")
+        return 2
+    write_state(state)
+    note_succes(args, "train_replay", exported=True)
+    print(f"doot : replay du Dernier Train -> {path}")
+    return 0
+
+
+def do_lost_station(args, action: str) -> int:
+    state = read_state()
+    before = wave6.lost_station_status(state)
+    try:
+        item = wave6.visit_lost_station(state, action) if action else before
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["visited"] and not before["visited"]:
+        note_succes(args, "lost_station", visited=True)
+    print(f"Gare Zero — {'VISIBLE' if item['unlocked'] else 'absente'} — "
+          f"{'visitee' if item['visited'] else item['hint']}")
+    return 0
+
+
+def do_thirteenth_bell(args, answer: str) -> int:
+    state = read_state()
+    before = wave6.thirteenth_bell_status(state)
+    try:
+        item = wave6.ring_thirteenth_bell(state, answer) if answer else before
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["rung"] and not before["rung"]:
+        note_succes(args, "thirteenth_bell", rung=True)
+    print(f"Treizieme Cloche — {item['found']}/{item['total']} echos")
+    for clue in item["clues"]:
+        print(f"  [{'*' if clue['found'] else ' '}] {clue['hint']}")
+    if item["epilogue"]:
+        print("  " + item["epilogue"])
+    return 0
+
+
 def do_snooze(args, value: str) -> int:
     try:
         until = schedule.duration(value)
@@ -3379,6 +3696,30 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
     parser.add_argument("--personal-museum", default=None, metavar="DESTINATION")
     parser.add_argument("--seals", action="store_true")
     parser.add_argument("--seal-submit", nargs=2, default=None, metavar=("SCEAU", "REPONSE"))
+    parser.add_argument("--ghost-train", nargs="?", const="", default=None, metavar="GRAINE",
+                        help="lance ou reprend une ligne du Dernier Train")
+    parser.add_argument("--train-route", default="", choices=tuple(wave6.TRAIN_ROUTES),
+                        metavar="LIGNE", help="force la ligne cendre, lune ou ossuaire")
+    parser.add_argument("--train-choose", default=None, metavar="ACTION")
+    parser.add_argument("--spectral-crew", nargs="?", const="", default=None, metavar="MEMBRE")
+    parser.add_argument("--rail-case", nargs="?", const="", default=None, metavar="GRAINE")
+    parser.add_argument("--rail-investigate", default=None, metavar="ACTION")
+    parser.add_argument("--archaeology", nargs="?", const="", default=None, metavar="SITE")
+    parser.add_argument("--restore-artifact", default=None, metavar="SITE")
+    parser.add_argument("--black-market", nargs="?", const="", default=None, metavar="ACTION")
+    parser.add_argument("--market-seed", default="", metavar="GRAINE")
+    parser.add_argument("--prophecy", nargs="?", const="", default=None, metavar="ACTION")
+    parser.add_argument("--crypt-gazette", default=None, metavar="DESTINATION")
+    parser.add_argument("--musical-battle", nargs="?", const="", default=None, metavar="GRAINE")
+    parser.add_argument("--battle-note", default=None, metavar="NOTE")
+    parser.add_argument("--funeral-house", nargs="?", const="", default=None, metavar="MAISON")
+    parser.add_argument("--house-mission", default=None, metavar="STRATEGIE")
+    parser.add_argument("--mod-forge", nargs=3, default=None,
+                        metavar=("DESTINATION", "NOM", "THEME"))
+    parser.add_argument("--mod-validate", default=None, metavar="CAPSULE")
+    parser.add_argument("--train-replay", default=None, metavar="DESTINATION")
+    parser.add_argument("--lost-station", nargs="?", const="", default=None, metavar="ACTION")
+    parser.add_argument("--thirteenth-bell", nargs="?", const="", default=None, metavar="REPONSE")
     parser.add_argument("--accessibility", action="store_true",
                         help="affiche les reglages d'accessibilite actifs")
     parser.add_argument("--fleet-parade", nargs="?", const="", default=None,
@@ -3904,6 +4245,44 @@ def main(argv: list[str] | None = None) -> int:
         return do_seal_submit(args, args.seal_submit[0], args.seal_submit[1])
     if args.seals:
         return do_seals(args)
+    if args.train_choose:
+        return do_train_choose(args, args.train_choose)
+    if args.ghost_train is not None:
+        return do_ghost_train(args, args.ghost_train)
+    if args.spectral_crew is not None:
+        return do_spectral_crew(args, args.spectral_crew)
+    if args.rail_investigate:
+        return do_rail_investigate(args, args.rail_investigate)
+    if args.rail_case is not None:
+        return do_rail_case(args, args.rail_case)
+    if args.restore_artifact:
+        return do_restore_artifact(args, args.restore_artifact)
+    if args.archaeology is not None:
+        return do_archaeology(args, args.archaeology)
+    if args.black_market is not None:
+        return do_black_market(args, args.black_market)
+    if args.prophecy is not None:
+        return do_prophecy(args, args.prophecy)
+    if args.crypt_gazette:
+        return do_crypt_gazette(args, args.crypt_gazette)
+    if args.battle_note:
+        return do_battle_note(args, args.battle_note)
+    if args.musical_battle is not None:
+        return do_musical_battle(args, args.musical_battle)
+    if args.house_mission:
+        return do_house_mission(args, args.house_mission)
+    if args.funeral_house is not None:
+        return do_funeral_house(args, args.funeral_house)
+    if args.mod_forge:
+        return do_mod_forge(args, args.mod_forge[0], args.mod_forge[1], args.mod_forge[2])
+    if args.mod_validate:
+        return do_mod_validate(args, args.mod_validate)
+    if args.train_replay:
+        return do_train_replay(args, args.train_replay)
+    if args.lost_station is not None:
+        return do_lost_station(args, args.lost_station)
+    if args.thirteenth_bell is not None:
+        return do_thirteenth_bell(args, args.thirteenth_bell)
     if args.accessibility:
         return do_accessibility(args)
     if args.melodies:

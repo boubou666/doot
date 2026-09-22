@@ -12,6 +12,26 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.30.0] - 2026-09-22
+
+### Ajouté
+- Le Dernier Train parcourt trois lignes fantômes procédurales avec intégrité,
+  charbon, cargaison, choix de conduite et équipage spectral à recruter.
+- Les affaires du rail proposent indices, interrogatoires et accusations. Trois
+  sites archéologiques livrent neuf fragments et trois artefacts à restaurer,
+  tandis que le marché noir dissimule ses contrefaçons jusqu'à l'expertise.
+- Les prophéties hebdomadaires s'adaptent à la progression. La Gazette de la
+  Crypte et le mode Réalisateur transforment l'historique local en HTML autonome.
+- Les combats musicaux répondent mesure par mesure. Trois maisons funéraires
+  rivales accordent leurs faveurs selon les cérémonies réussies.
+- L'atelier forge des capsules `.dootmod` bornées, signées et strictement
+  déclaratives : aucun point d'entrée exécutable n'est accepté.
+- La Gare Zéro récompense trois échecs prophétiques distincts. La Treizième
+  Cloche relie le rail, l'équipage, l'enquête, l'archéologie, la musique et les
+  maisons dans une nouvelle énigme secrète.
+- Quinze succès illustrés portent le cabinet à 79 médailles et 2 525 points ;
+  chacun possède une illustration originale 256×256.
+
 ## [1.29.0] - 2026-09-22
 
 ### Ajouté
@@ -873,7 +893,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.29.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.30.0...HEAD
+[1.30.0]: https://github.com/boubou666/doot/compare/v1.29.0...v1.30.0
 [1.29.0]: https://github.com/boubou666/doot/compare/v1.28.0...v1.29.0
 [1.28.0]: https://github.com/boubou666/doot/compare/v1.27.0...v1.28.0
 [1.27.0]: https://github.com/boubou666/doot/compare/v1.26.0...v1.27.0

@@ -61,6 +61,13 @@ class CatalogueGraphique(unittest.TestCase):
             "--invasion-defend", "--tribunal", "--tribunal-action", "--legacy",
             "--campaign-lab", "--campaign-check", "--personal-museum",
             "--seals", "--seal-submit",
+            "--ghost-train", "--train-route", "--train-choose",
+            "--spectral-crew", "--rail-case", "--rail-investigate",
+            "--archaeology", "--restore-artifact", "--black-market",
+            "--market-seed", "--prophecy", "--crypt-gazette",
+            "--musical-battle", "--battle-note", "--funeral-house",
+            "--house-mission", "--mod-forge", "--mod-validate",
+            "--train-replay", "--lost-station", "--thirteenth-bell",
             "--accessibility",
         }
         self.assertEqual(options, attendues)
@@ -114,6 +121,15 @@ class CompositionCommande(unittest.TestCase):
             {"--campaign-pack": "campagne.json", "": "packs"}, {}, self.settings,
         )
         self.assertEqual(argv, ["--campaign-pack", "campagne.json", "packs"])
+
+    def test_la_forge_de_mod_garde_ses_trois_arguments(self):
+        argv = gui.build_command_argv(
+            self.command("mod-forge"),
+            {"--mod-forge": "mods; Express des ombres; train"}, {}, self.settings,
+        )
+        self.assertEqual(argv, ["--mod-forge", "mods", "Express des ombres", "train"])
+        parsed = cli.build_parser().parse_args(argv)
+        self.assertEqual(parsed.mod_forge, ["mods", "Express des ombres", "train"])
 
     def test_un_parametre_obligatoire_manquant_est_refuse(self):
         with self.assertRaisesRegex(ValueError, "Melodie"):
