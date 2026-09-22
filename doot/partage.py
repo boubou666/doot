@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from . import coffre, contagion, succes, transport
+from . import coffre, contagion, duel, succes, transport
 
 FICHIER = "replica.json"
 
@@ -170,6 +170,9 @@ def part_exportable(etat: dict, avec_contagion: bool = False) -> dict:
         "stats": etat.get("stats", {}),
         "succes": etat.get("succes", {}),
     }
+    classement = duel.export(etat)
+    if classement:
+        part["duel"] = classement
     signal = etat.get("contagion_sortante")
     if avec_contagion and contagion.valide(signal):
         part["contagion"] = signal
@@ -220,6 +223,7 @@ def lire_objets(etat: dict, depot, cle: bytes, objets) -> list[Lecture]:
         except ValueError as exc:
             lectures.append(Lecture(objet.nom, refus=str(exc)))
             continue
+        duel.merge(etat, distant)
         contagion.recevoir(etat, distant.get("contagion"))
         lectures.append(Lecture(objet.nom, machine=str(distant.get("machine")),
                                 debloques=tuple(nouveaux)))
@@ -265,6 +269,7 @@ def lire_parts(etat: dict, fichiers) -> list[Lecture]:
         except ValueError as exc:
             lectures.append(Lecture(chemin.name, refus=str(exc)))
             continue
+        duel.merge(etat, distant)
         lectures.append(Lecture(chemin.name, machine=str(distant.get("machine")),
                                 debloques=tuple(nouveaux)))
     return lectures

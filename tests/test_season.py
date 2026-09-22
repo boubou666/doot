@@ -89,5 +89,15 @@ class Description(unittest.TestCase):
         self.assertIn("01/09/2027", text)
 
 
+class CalendrierGraphique(unittest.TestCase):
+    def test_hors_saison_compte_les_jours_calendaires(self):
+        text = season.countdown(datetime(2027, 8, 31, 23, 59))
+        self.assertIn("J-1", text)
+        self.assertIn("01/09/2027", text)
+
+    def test_pendant_la_saison_le_cartouche_disparait(self):
+        self.assertIsNone(season.countdown(datetime(2027, 10, 12, 9, 0)))
+
+
 if __name__ == "__main__":
     unittest.main()

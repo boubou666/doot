@@ -330,6 +330,41 @@ class TourCompletEnLigneDeCommande(CliTestCase):
                 parser.parse_args(["--spin", "--side", "left"])
 
 
+class DootInverseEtMuet(CliTestCase):
+    def setUp(self):
+        super().setUp()
+        patch = mock.patch.object(season, "in_season", lambda now=None: True)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def test_reverse_force_image_et_wav_inverses(self):
+        self.run_cli("--once", "--reverse")
+        call = self.shown[0]
+        self.assertTrue(call["reverse"])
+        self.assertEqual(call["wav_path"].name, "doot-reverse.wav")
+        self.assertTrue(call["wav_path"].is_file())
+
+    def test_no_reverse_gagne_sur_reverse(self):
+        args = cli.parse_args(["--reverse", "--no-reverse"])
+        self.assertFalse(cli.should_reverse(args))
+
+    def test_chance_reverse_bornee(self):
+        class Fixe:
+            def __init__(self, value):
+                self.value = value
+
+            def random(self):
+                return self.value
+
+        args = cli.build_parser().parse_args(["--reverse-chance", "0.3"])
+        self.assertTrue(cli.should_reverse(args, Fixe(0.2)))
+        self.assertFalse(cli.should_reverse(args, Fixe(0.4)))
+
+    def test_mode_sans_son_affiche_le_doot_geant(self):
+        self.run_cli("--once", "--no-sound", "--no-reverse")
+        self.assertEqual(self.shown[0]["visual_text"], "D O O T")
+
+
 class Salves(CliTestCase):
     """Plusieurs doots a la suite pour un seul declenchement."""
 
@@ -693,6 +728,30 @@ class CommandesInformatives(CliTestCase):
         self.assertEqual(self.run_cli("--achievements"), 0)
         self.assertEqual(self.run_cli("--succes"), 0)
         self.assertEqual(self.shown, [])
+
+    def test_nom_et_classement_duel(self):
+        from doot import duel
+
+        sortie = io.StringIO()
+        with mock.patch("sys.stdout", new=sortie):
+            self.assertEqual(self.run_cli("--duel-name", "Doot   Vader"), 0)
+        state = cli.read_state()
+        duel.record(state, 12, special=True, now=datetime(2026, 9, 22))
+        cli.write_state(state)
+
+        sortie = io.StringIO()
+        with mock.patch.object(duel, "season_year", lambda now=None: 2026), \
+                mock.patch("sys.stdout", new=sortie):
+            self.assertEqual(self.run_cli("--duel-board"), 0)
+        texte = sortie.getvalue()
+        self.assertIn("Doot Vader", texte)
+        self.assertIn("12 doots", texte)
+        self.assertIn("1 speciaux", texte)
+        self.assertIn("<- toi", texte)
+
+    def test_nom_duel_vide_est_refuse(self):
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            self.assertEqual(self.run_cli("--duel-name", "   "), 2)
 
     def test_stop_sans_daemon(self):
         self.assertEqual(self.run_cli("--stop"), 1)

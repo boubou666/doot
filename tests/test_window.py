@@ -105,6 +105,14 @@ class Orientation(unittest.TestCase):
         for cote in ("top", "bottom"):
             self.assertEqual(window.TOURS[cote] % 2, 0)
 
+    def test_reverse_ajoute_exactement_un_demi_tour(self):
+        self.assertEqual(window.image_turns(None, True), 2)
+        for cote in window.COTES:
+            self.assertEqual(
+                window.image_turns(cote, True),
+                (window.image_turns(cote, False) + 2) % 4,
+            )
+
 
 class TourComplet(unittest.TestCase):
     """La rotation complete : le squelette tourne sur lui-meme, sur place."""

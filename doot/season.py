@@ -69,6 +69,21 @@ def seconds_until_next_season(now: datetime | None = None) -> float:
     return max(0.0, (next_season_start(now) - now).total_seconds())
 
 
+def countdown(now: datetime | None = None) -> str | None:
+    """Cartouche de la GUI hors saison, compte en jours calendaires.
+
+    Une veille a 23 h 59 reste bien ``J-1`` : pour un calendrier, afficher
+    ``J-0`` pendant la derniere journee serait techniquement defensable mais
+    franchement moins rejouissant.
+    """
+    now = now or datetime.now()
+    if in_season(now):
+        return None
+    opening = next_season_start(now)
+    days = max(1, (opening.date() - now.date()).days)
+    return f"J-{days} AVANT LE DOOTING TIME  ·  {opening:%d/%m/%Y}"
+
+
 def describe(now: datetime | None = None) -> str:
     now = now or datetime.now()
     if in_season(now):

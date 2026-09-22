@@ -15,6 +15,7 @@ import array
 import math
 import os
 import random
+import re
 import shutil
 import struct
 import subprocess
@@ -54,6 +55,7 @@ LINUX_PLAYERS = (
 )
 
 MCI_ALIAS = "dootsound"
+VISUAL_VOLUME_THRESHOLD = 0.05
 
 
 # ------------------------------------------------------------- synthese ------
@@ -125,6 +127,203 @@ def ensure_wav(path: Path, volume: float = 0.55, force: bool = False) -> Path:
     if force or not path.exists() or path.stat().st_size == 0:
         write_wav(path, volume)
     return path
+
+
+def reverse_wav(src: Path, dest: Path) -> Path | None:
+    """Inverse les trames d'un WAV sans inverser les octets des echantillons.
+
+    None laisse l'appelant choisir un repli pour les formats compresses ou les
+    fichiers abimes. Tous les parametres PCM sont conserves.
+    """
+    try:
+        with wave.open(str(src), "rb") as handle:
+            params = handle.getparams()
+            frame_size = handle.getnchannels() * handle.getsampwidth()
+            raw = handle.readframes(handle.getnframes())
+        if frame_size <= 0 or len(raw) % frame_size:
+            return None
+        reversed_frames = b"".join(
+            raw[offset:offset + frame_size]
+            for offset in range(len(raw) - frame_size, -1, -frame_size)
+        )
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(dest), "wb") as handle:
+            handle.setparams(params)
+            handle.writeframes(reversed_frames)
+    except Exception:
+        return None
+    return dest
+
+
+# ------------------------------------------------------- volume systeme -----
+
+def _parse_output_level(text: str) -> float | None:
+    """Lit les sorties usuelles de wpctl, pactl et ``get volume settings``."""
+    lowered = text.lower()
+    if "[muted]" in lowered or re.search(r"(?:mute|muted)\s*:\s*(?:yes|true|1)", lowered):
+        return 0.0
+
+    percent = re.search(r"(?:output volume\s*:\s*)?(\d+(?:[.,]\d+)?)\s*%", lowered)
+    if percent:
+        return max(0.0, min(1.0, float(percent.group(1).replace(",", ".")) / 100.0))
+
+    mac = re.search(r"output volume\s*:\s*(\d+(?:[.,]\d+)?)", lowered)
+    if mac:
+        return max(0.0, min(1.0, float(mac.group(1).replace(",", ".")) / 100.0))
+
+    pipewire = re.search(r"volume\s*:\s*(\d+(?:[.,]\d+)?)", lowered)
+    if pipewire:
+        return max(0.0, min(1.0, float(pipewire.group(1).replace(",", "."))))
+    return None
+
+
+def _volume_command(command: list[str]) -> str | None:
+    try:
+        result = subprocess.run(
+            command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL, text=True, timeout=0.8, check=False,
+        )
+    except Exception:
+        return None
+    return result.stdout if result.returncode == 0 else None
+
+
+def _windows_core_audio_level() -> float | None:
+    """Volume et mute du peripherique de rendu Windows via Core Audio COM."""
+    import ctypes
+    import uuid
+
+    class GUID(ctypes.Structure):
+        _fields_ = (
+            ("Data1", ctypes.c_uint32),
+            ("Data2", ctypes.c_uint16),
+            ("Data3", ctypes.c_uint16),
+            ("Data4", ctypes.c_ubyte * 8),
+        )
+
+    def guid(value: str) -> GUID:
+        raw = uuid.UUID(value)
+        return GUID(
+            raw.time_low, raw.time_mid, raw.time_hi_version,
+            (ctypes.c_ubyte * 8).from_buffer_copy(raw.bytes[8:]),
+        )
+
+    def method(pointer, index, result, *arguments):
+        table = ctypes.cast(
+            pointer, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))
+        ).contents
+        return ctypes.WINFUNCTYPE(result, ctypes.c_void_p, *arguments)(table[index])
+
+    ole32 = ctypes.windll.ole32
+    initialized = False
+    enumerator = ctypes.c_void_p()
+    device = ctypes.c_void_p()
+    endpoint = ctypes.c_void_p()
+    try:
+        initialized = ole32.CoInitialize(None) in (0, 1)
+        clsid = guid("BCDE0395-E52F-467C-8E3D-C4579291692E")
+        iid_enumerator = guid("A95664D2-9614-4F35-A746-DE8DB63617E6")
+        iid_endpoint = guid("5CDF2C82-841E-4546-9722-0CF74078229A")
+        ole32.CoCreateInstance.argtypes = (
+            ctypes.POINTER(GUID), ctypes.c_void_p, ctypes.c_uint32,
+            ctypes.POINTER(GUID), ctypes.POINTER(ctypes.c_void_p),
+        )
+        ole32.CoCreateInstance.restype = ctypes.c_long
+        if ole32.CoCreateInstance(
+                ctypes.byref(clsid), None, 23, ctypes.byref(iid_enumerator),
+                ctypes.byref(enumerator)) < 0:
+            return None
+
+        get_default = method(
+            enumerator, 4, ctypes.c_long,
+            ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_void_p),
+        )
+        if get_default(enumerator, 0, 1, ctypes.byref(device)) < 0:
+            return None
+
+        activate = method(
+            device, 3, ctypes.c_long,
+            ctypes.POINTER(GUID), ctypes.c_uint32, ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_void_p),
+        )
+        if activate(
+                device, ctypes.byref(iid_endpoint), 23, None,
+                ctypes.byref(endpoint)) < 0:
+            return None
+
+        level = ctypes.c_float()
+        muted = ctypes.c_int()
+        if method(endpoint, 9, ctypes.c_long, ctypes.POINTER(ctypes.c_float))(
+                endpoint, ctypes.byref(level)) < 0:
+            return None
+        if method(endpoint, 15, ctypes.c_long, ctypes.POINTER(ctypes.c_int))(
+                endpoint, ctypes.byref(muted)) < 0:
+            return None
+        return 0.0 if muted.value else max(0.0, min(1.0, level.value))
+    except Exception:
+        return None
+    finally:
+        for pointer in (endpoint, device, enumerator):
+            if pointer.value:
+                try:
+                    method(pointer, 2, ctypes.c_ulong)(pointer)
+                except Exception:
+                    pass
+        if initialized:
+            ole32.CoUninitialize()
+
+
+def system_output_level() -> float | None:
+    """Niveau de sortie global, de 0 a 1, ou None s'il est inconnu.
+
+    C'est volontairement un meilleur-effort sans dependance : WinMM sous
+    Windows, ``get volume settings`` sous macOS, puis wpctl/pactl sous Linux.
+    """
+    if sys.platform == "win32":
+        level = _windows_core_audio_level()
+        if level is not None:
+            return level
+        # Vieux pilotes sans Core Audio : WinMM ne dit pas le mute, mais un
+        # volume nul reste une information utile.
+        try:
+            import ctypes
+
+            packed = ctypes.c_uint32()
+            mapper = ctypes.c_void_p(-1)
+            result = ctypes.windll.winmm.waveOutGetVolume(mapper, ctypes.byref(packed))
+            if result != 0:
+                return None
+            left = packed.value & 0xFFFF
+            right = packed.value >> 16
+            return max(left, right) / 65535.0
+        except Exception:
+            return None
+
+    if sys.platform == "darwin":
+        if not shutil.which("osascript"):
+            return None
+        text = _volume_command(["osascript", "-e", "get volume settings"])
+        return _parse_output_level(text or "")
+
+    if shutil.which("wpctl"):
+        text = _volume_command(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
+        level = _parse_output_level(text or "")
+        if level is not None:
+            return level
+    if shutil.which("pactl"):
+        mute = _volume_command(["pactl", "get-sink-mute", "@DEFAULT_SINK@"]) or ""
+        volume = _volume_command(["pactl", "get-sink-volume", "@DEFAULT_SINK@"]) or ""
+        return _parse_output_level(f"{mute}\n{volume}")
+    return None
+
+
+def visual_fallback_needed(no_sound: bool, configured_volume: float,
+                           path: Path | None) -> bool:
+    """Le doot doit-il aussi devenir lisible en tres grandes lettres ?"""
+    if no_sound or path is None or configured_volume <= VISUAL_VOLUME_THRESHOLD:
+        return True
+    level = system_output_level()
+    return level is not None and level <= VISUAL_VOLUME_THRESHOLD
 
 
 def custom_sounds(custom_dir: Path) -> list[Path]:
