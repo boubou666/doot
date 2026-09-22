@@ -12,6 +12,8 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.26.0] - 2026-09-22
+
 ### Ajouté
 - Une campagne à embranchements, un boss saisonnier persistant, les combos et
   le mode invasion prolongent les apparitions en modes de jeu locaux.
@@ -811,7 +813,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.25.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.26.0...HEAD
+[1.26.0]: https://github.com/boubou666/doot/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/boubou666/doot/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/boubou666/doot/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/boubou666/doot/compare/v1.22.0...v1.23.0
