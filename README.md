@@ -618,13 +618,36 @@ doot --lost-station
 doot --thirteenth-bell
 ```
 
+## 🌅 La Nuit du Grand Retour
+
+Cette campagne se joue en sept nuits successives, à ton rythme. Elle relie
+le Dernier Train, son équipage, la Cité des Os, les maisons funéraires, la
+Némésis et les combats musicaux. Chaque scène propose deux décisions
+immédiates et une troisième si tu as progressé dans le mode correspondant.
+La confiance de l'équipage, l'espoir de la foule et la volonté de la ville
+font réagir les scènes suivantes et déterminent la fin.
+
+```bash
+doot --grand-retour                 # commencer ou reprendre
+doot --grand-retour-choose proteger # décision de la première nuit
+doot --grand-retour-restart         # rejouer après une fin
+doot --grand-retour-export ./grand-retour.html
+doot --grand-retour-secret          # consulter les souvenirs cachés
+```
+
+Le journal et les fins découvertes restent dans l'état local. La GUI les
+affiche dans l'onglet Chroniques ; l'export HTML est autonome et respecte
+les préférences de mouvements réduits. Les apparitions ordinaires du daemon
+gardent leur cadence réglable avec `--min`, `--max` et `--quiet-hours` :
+la campagne avance seulement quand tu choisis.
+
 ## 🏆 Les succès
 
 Doot garde sa progression **uniquement en local**, dans le même `state.json` que
 le compteur de mélodies (`doot --paths` montre son emplacement). Aucun compte,
 aucune connexion et aucune télémétrie : les apparitions, les salves, les mélodies,
 les bords imposés, les formations, les événements et les profils débloquent
-79 succès pour un total de 2 525 points.
+83 succès pour un total de 2 745 points.
 
 ```bash
 doot --achievements     # alias français : doot --succes

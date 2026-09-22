@@ -43,6 +43,8 @@ TOTAUX = (
     "maisons_honorees", "mods_valides", "replays_train_exportes",
     "treizieme_cloche_sonnee", "gare_zero_visitee",
     "collections_archeologiques", "reseaux_ferroviaires_maitrises",
+    "grands_retours", "equipages_fideles", "trois_destins_vus",
+    "aubes_invisibles",
 )
 MAXIMA = ("plus_grande_salve", "voix_max", "serie_defis")
 ENSEMBLES = (
@@ -367,6 +369,20 @@ CATALOGUE = (
     Succes("roi_dernier_train", "Roi du Dernier Train",
            "Atteindre le terminus des trois lignes fantomes.", 60, 1,
            _valeur("reseaux_ferroviaires_maitrises")),
+    Succes("veilleur_sept_nuits", "Veilleur des sept nuits",
+           "Terminer la Nuit du Grand Retour.", 50, 1,
+           _valeur("grands_retours")),
+    Succes("lien_indefectible", "Lien indefectible",
+           "Atteindre une fin avec un equipage fidele.", 35, 1,
+           _valeur("equipages_fideles")),
+    Succes("trois_destins", "Trois destins",
+           "Decouvrir les trois fins du Grand Retour.", 60, 1,
+           _valeur("trois_destins_vus")),
+    Succes("aube_cachee", "L'Aube invisible",
+           "Reunir sept souvenirs et resoudre l'enigme de la porte.", 75, 1,
+           _valeur("aubes_invisibles"), True,
+           ("Sept nuits gardent sept souvenirs.",
+            "L'equipage doit rester fidele jusqu'a l'aube.")),
 )
 
 
@@ -708,6 +724,18 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
     elif evenement == "lost_station":
         if details.get("visited") is True:
             _ajoute(stats, "gare_zero_visitee", origine)
+
+    elif evenement == "grand_retour":
+        if details.get("completed") is True:
+            _ajoute(stats, "grands_retours", origine)
+            if details.get("loyal") is True:
+                _ajoute(stats, "equipages_fideles", origine)
+            if entier(details.get("endings")) >= 3:
+                _ajoute(stats, "trois_destins_vus", origine)
+
+    elif evenement == "grand_retour_secret":
+        if details.get("solved") is True:
+            _ajoute(stats, "aubes_invisibles", origine)
 
     return _debloquer(etat, maintenant)
 

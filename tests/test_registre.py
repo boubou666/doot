@@ -252,7 +252,7 @@ class OngletsDeLEtat(unittest.TestCase):
     def test_le_registre_a_son_onglet_comme_les_succes(self):
         self.assertEqual(
             set(gui.ONGLETS_ETAT),
-            {"achievements", "stats", "history", "challenge"},
+            {"achievements", "stats", "history", "challenge", "grand-retour"},
         )
 
     def test_chaque_action_nomme_une_methode_et_un_onglet_qui_existent(self):

@@ -207,6 +207,8 @@ class EspecesDeStatistiques(unittest.TestCase):
         succes.enregistrer(etat, "train_replay", exported=True)
         succes.enregistrer(etat, "thirteenth_bell", rung=True)
         succes.enregistrer(etat, "lost_station", visited=True)
+        succes.enregistrer(etat, "grand_retour", completed=True, loyal=True, endings=3)
+        succes.enregistrer(etat, "grand_retour_secret", solved=True)
         return set(etat["stats"])
 
     def test_la_table_couvre_ce_qui_est_ecrit(self):
