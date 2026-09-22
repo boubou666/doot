@@ -12,6 +12,21 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Ajouté
+- Une campagne à embranchements, un boss saisonnier persistant, les combos et
+  le mode invasion prolongent les apparitions en modes de jeu locaux.
+- Le Choregraphe visuel, Studio Live, les mélodies procédurales et les replays
+  HTML autonomes complètent les outils de création.
+- Les rituels quotidiens, le musée des saisons, quatre personnalités de
+  squelettes et les duels musicaux rejoignent le grimoire et la CLI.
+- Quatre succès secrets à indices progressifs et cinq succès publics portent
+  le cabinet à 32 médailles et 945 points. Chaque médaille possède une
+  illustration originale, les badges secrets restant masqués avant déblocage.
+- Les packs v2 embarquent auteur, description, version de contenu et empreintes
+  SHA-256 vérifiées ; la bibliothèque conserve les archives importées.
+- Les profils acceptent mouvements réduits, flashs réduits, contraste renforcé
+  et plafond sonore.
+
 ## [1.25.0] - 2026-09-22
 
 ### Ajouté

@@ -26,9 +26,19 @@ class CatalogueGraphique(unittest.TestCase):
             "--history", "--challenge", "--content", "--favor-melody",
             "--disable-melody", "--enable-melody", "--favor-event",
             "--disable-event", "--enable-event",
-            "--pack-export", "--pack-import", "--fleet-parade", "--snooze",
+            "--pack-export", "--pack-import", "--pack-author", "--pack-description",
+            "--pack-version", "--fleet-parade", "--snooze",
             "--resume", "--schedule-profile", "--schedule-window",
             "--schedule-days", "--unschedule-profile",
+            "--choreographer", "--studio-live", "--pack-library",
+            "--campaign", "--campaign-choose", "--boss", "--boss-hit",
+            "--combo", "--invasion", "--generate-melody", "--melody-seed",
+            "--melody-name", "--replay-export", "--choreographies",
+            "--choreography-save", "--choreography-play", "--rituals",
+            "--ritual-add", "--ritual-at", "--ritual-action", "--ritual-value",
+            "--ritual-delete", "--museum", "--skeletons", "--skeleton",
+            "--music-duel", "--music-duels", "--duel-opponent", "--riddles",
+            "--accessibility",
         }
         self.assertEqual(options, attendues)
 

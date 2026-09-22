@@ -375,6 +375,7 @@ transportent ensemble dans un pack ; les collisions reçoivent `-2`, `-3`, etc. 
 ```bash
 doot --pack-export "Nuit gothique" ./packs
 doot --pack-import ./packs/Nuit-gothique.dootpack.zip
+doot --pack-library                    # métadonnées et empreintes SHA-256
 ```
 
 Enfin, une flotte déjà configurée par `--sync-init` peut préparer une parade
@@ -386,13 +387,42 @@ doot --fleet-parade                     # rencontre parade
 doot --fleet-parade megalovania         # même mélodie sur les postes
 ```
 
+## 🦴 Aventures, studios et rituels
+
+La seconde vague ajoute plusieurs modes qui réutilisent le même moteur au lieu
+de créer des mini-applications isolées :
+
+```bash
+doot --campaign                         # histoire à embranchements
+doot --boss                             # boss persistant de la saison
+doot --invasion 5                       # vagues de formations croissantes
+doot --generate-melody macabre --melody-seed treize
+doot --choreographer                    # timeline visuelle
+doot --studio-live                      # clavier, quantification, RTTTL
+doot --replay-export ./replays          # HTML autonome partageable
+doot --ritual-add reveil --ritual-at 08:13
+doot --museum                           # saisons, boss et curiosités
+doot --skeleton jazz                    # personnalité et style de jeu
+doot --music-duel c,d,e,g
+```
+
+Les options `--reduce-motion`, `--no-flash`, `--high-contrast` et
+`--sound-limit 0.4` sont persistables dans un profil. Les chorégraphies et les
+rituels restent des documents JSON déclaratifs : aucun contenu importé ne peut
+exécuter de code.
+
+Quatre succès sont de vraies énigmes. `doot --riddles` révèle leurs indices par
+paliers, mais leur titre, leurs points et leur badge personnel restent cachés
+jusqu'à la résolution. Ils peuvent être liés à une heure, une mise en scène, un
+chemin de campagne ou une partition inhabituelle.
+
 ## 🏆 Les succès
 
 Doot garde sa progression **uniquement en local**, dans le même `state.json` que
 le compteur de mélodies (`doot --paths` montre son emplacement). Aucun compte,
 aucune connexion et aucune télémétrie : les apparitions, les salves, les mélodies,
 les bords imposés, les formations, les événements et les profils débloquent
-23 succès pour un total de 620 points.
+32 succès pour un total de 945 points.
 
 ```bash
 doot --achievements     # alias français : doot --succes

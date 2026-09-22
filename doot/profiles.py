@@ -24,7 +24,8 @@ OPTIONS = (
     "spin_chance", "spin_ms", "reverse", "no_reverse", "reverse_chance",
     "screen", "no_sound", "no_pan",
     "event_chance", "event_pity", "no_event", "contagion_chance",
-    "no_contagion", "quiet", "quiet_hours",
+    "no_contagion", "quiet", "quiet_hours", "reduce_motion", "no_flash",
+    "high_contrast", "sound_limit",
 )
 
 _ENTIERS = {
@@ -35,11 +36,13 @@ _NOMBRES = {
     "burst_delay", "duration", "scale", "volume", "opacity",
     "melody_chance", "slide_chance", "spin_chance", "reverse_chance", "event_chance",
     "contagion_chance",
+    "sound_limit",
 }
 _BOOLEENS = {
     "no_image", "center", "no_slide", "no_melody", "spin", "no_spin",
     "reverse", "no_reverse",
     "no_sound", "no_pan", "no_event", "no_contagion", "quiet",
+    "reduce_motion", "no_flash", "high_contrast",
 }
 _TEXTES = {"image", "side", "screen", "quiet_hours"}
 _FORMATIONS = {"random", "canon", "wave", "rain", "vortex", "duel"}
