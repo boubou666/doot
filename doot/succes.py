@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
+from . import duel
+
 
 Progression = Callable[[dict], int]
 BADGES_DIR = Path(__file__).resolve().parent / "assets" / "success"
@@ -226,6 +228,10 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
             if isinstance(rencontre, str) and rencontre:
                 _ajoute(stats, "evenements", origine)
                 _ajoute_unique(stats, "evenements_vus", rencontre)
+            duel.record(
+                etat, quantite, special=isinstance(rencontre, str) and bool(rencontre),
+                now=maintenant,
+            )
             _jour_actif(stats, maintenant)
 
     elif evenement == "melodie":

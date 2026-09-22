@@ -11,6 +11,7 @@ import tempfile
 import unittest
 import wave
 from pathlib import Path
+from unittest import mock
 
 from doot import sound
 
@@ -124,6 +125,48 @@ class ChoixDuSon(unittest.TestCase):
         chosen = sound.pick_sound(self.cache, self.customs, 0.55)
         bundled = sound.bundled_sound()
         self.assertIn(chosen, [p for p in (bundled, self.cache) if p is not None])
+
+
+class SonInverse(unittest.TestCase):
+    def test_inverse_des_trames_entieres(self):
+        with tempfile.TemporaryDirectory() as dossier:
+            source = Path(dossier) / "source.wav"
+            destination = Path(dossier) / "inverse.wav"
+            with wave.open(str(source), "wb") as handle:
+                handle.setnchannels(2)
+                handle.setsampwidth(2)
+                handle.setframerate(8000)
+                handle.writeframes(b"aaaabbbbcccc")
+
+            self.assertEqual(sound.reverse_wav(source, destination), destination)
+            with wave.open(str(destination), "rb") as handle:
+                self.assertEqual(handle.readframes(3), b"ccccbbbbaaaa")
+
+    def test_refuse_un_fichier_non_wav(self):
+        with tempfile.TemporaryDirectory() as dossier:
+            source = Path(dossier) / "source.mp3"
+            source.write_bytes(b"pas un wav")
+            self.assertIsNone(sound.reverse_wav(source, Path(dossier) / "inverse.wav"))
+
+
+class DootVisuel(unittest.TestCase):
+    def test_parse_les_outils_des_trois_plateformes(self):
+        self.assertEqual(sound._parse_output_level("Volume: 0.42"), 0.42)
+        self.assertEqual(sound._parse_output_level("Volume: 0.42 [MUTED]"), 0.0)
+        self.assertEqual(sound._parse_output_level("Volume: front-left: 30%"), 0.30)
+        self.assertEqual(
+            sound._parse_output_level("output volume:77, input volume:50, output muted:false"),
+            0.77,
+        )
+
+    def test_mode_muet_et_volume_bas_forcent_le_texte(self):
+        path = Path("doot.wav")
+        self.assertTrue(sound.visual_fallback_needed(True, 1.0, path))
+        self.assertTrue(sound.visual_fallback_needed(False, 0.01, path))
+
+    def test_un_systeme_audible_ne_force_pas_le_texte(self):
+        with mock.patch.object(sound, "system_output_level", return_value=0.8):
+            self.assertFalse(sound.visual_fallback_needed(False, 0.5, Path("doot.wav")))
 
 
 class Duree(unittest.TestCase):

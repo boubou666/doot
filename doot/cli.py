@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import (
-    __version__, art, carte, coffre, codex, contagion, image, notification,
+    __version__, art, carte, coffre, codex, contagion, duel, image, notification,
     partage, profiles, registre, season, sound, succes,
 )
 
@@ -24,6 +24,7 @@ DEFAULT_DURATION = 2.8
 DEFAULT_VOLUME = 0.55
 DEFAULT_SPIN_CHANCE = 0.25
 DEFAULT_SPIN_MS = 700
+DEFAULT_REVERSE_CHANCE = 0.03
 DEFAULT_BURST_DELAY = 0.6
 DEFAULT_EVENT_CHANCE = 0.02
 DEFAULT_EVENT_PITY = 100
@@ -161,7 +162,7 @@ def release_pid_file() -> None:
 
 # ------------------------------------------------------------- actions -------
 
-def resolve_media(args) -> tuple:
+def resolve_media(args, reverse: bool = False) -> tuple:
     """(son, image, duree) pour le prochain doot.
 
     Relu a chaque doot : tu peux deposer un son ou une image pendant que le
@@ -173,6 +174,16 @@ def resolve_media(args) -> tuple:
     if not args.no_sound:
         try:
             wav = sound.pick_sound(p["wav"], p["sound"], args.volume)
+            if reverse:
+                # La stdlib ne decode pas les MP3 et autres formats compresses.
+                # Dans ce cas le doot inverse garde sa promesse avec le jingle
+                # synthetise, toujours disponible en WAV.
+                source = wav
+                if source.suffix.lower() != ".wav":
+                    source = sound.ensure_wav(p["wav"], args.volume)
+                inverse = sound.reverse_wav(source, p["data"] / "doot-reverse.wav")
+                if inverse is not None:
+                    wav = inverse
         except Exception as exc:
             log(f"son indisponible : {exc}", quiet=args.quiet)
 
@@ -194,7 +205,7 @@ def resolve_media(args) -> tuple:
     return wav, picture, duration
 
 
-def display_options(args, step: dict | None = None) -> dict:
+def display_options(args, step: dict | None = None, reverse: bool = False) -> dict:
     """Les reglages d'affichage, tels que `window.show` les attend.
 
     Un seul endroit ou traduire les options, hors de la boucle de la salve :
@@ -220,6 +231,7 @@ def display_options(args, step: dict | None = None) -> dict:
         "spin_chance": 1.0 if args.spin else args.spin_chance,
         "spin_ms": args.spin_ms,
         "glitch": getattr(args, "mise_en_scene", "") == "faux-bug",
+        "reverse": reverse,
     }
 
     # Une formation ne remplace que les choix laisses au hasard par
@@ -305,6 +317,14 @@ def burst_size(args, rng=random) -> int:
     return rng.randint(bas, haut)
 
 
+def should_reverse(args, rng=random) -> bool:
+    """Un seul tirage gouverne ensemble l'image et le son de ce doot."""
+    if args.no_reverse:
+        return False
+    chance = 1.0 if args.reverse else args.reverse_chance
+    return rng.random() < max(0.0, min(1.0, chance))
+
+
 def emit_doots(args, journal: bool = False, evenement: str | None = None) -> int:
     """Joue la salve de ce declenchement ; renvoie le nombre de doots affiches.
 
@@ -332,9 +352,16 @@ def emit_doots(args, journal: bool = False, evenement: str | None = None) -> int
                     if journal:
                         log("la saison s'est fermee pendant la salve.", quiet=args.quiet)
                     break
-            wav, picture, duration = resolve_media(args)
+            reverse = should_reverse(args)
+            wav, picture, duration = resolve_media(args, reverse=reverse)
+            visual_text = (
+                "D O O T"
+                if sound.visual_fallback_needed(args.no_sound, args.volume, wav)
+                else None
+            )
             window.show(wav_path=wav, duration=duration, image_path=picture,
-                        **display_options(args, plan[index - 1]))
+                        visual_text=visual_text,
+                        **display_options(args, plan[index - 1], reverse=reverse))
             joues += 1
             if journal:
                 log("doot !" if total == 1 else f"doot {index}/{total} !", quiet=args.quiet)
@@ -724,6 +751,39 @@ def do_codex(args) -> int:
             print(f"        Indice : {apparition.indice}")
     print("\nLes rencontres locales se forcent avec doot --event NOM ; "
           "la contagion doit venir d'une autre machine.")
+    return 0
+
+
+def do_duel_name(args, wanted: str) -> int:
+    """Donne un nom lisible a cette replique dans le classement partage."""
+    etat = read_state()
+    try:
+        name = duel.set_name(etat, wanted)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(etat)
+    print(f"doot : combattant nomme {name}")
+    return 0
+
+
+def do_duel_board(args) -> int:
+    """Actualise si possible, puis affiche le classement de la saison."""
+    sync_tour(args)
+    etat = read_state()
+    year = duel.season_year()
+    rows = duel.standings(etat, year)
+    print(f"Duel de doot - saison {year}")
+    if not rows:
+        print("  aucun doot compte pour le moment")
+        print("\nChoisir son nom : doot --duel-name NOM")
+        return 0
+    for rank, row in enumerate(rows, 1):
+        marker = " <- toi" if row.machine == succes.machine(etat) else ""
+        print(
+            f"  {rank:>2}. {row.name:<32} {row.doots:>6} doots  "
+            f"{row.specials:>3} speciaux{marker}"
+        )
     return 0
 
 
@@ -1609,6 +1669,10 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                         help="liste les rencontres rares et leur commande d'essai")
     parser.add_argument("--event", default=None, metavar="NOM",
                         help="force une rencontre rare (voir --events), puis quitte")
+    parser.add_argument("--duel-board", action="store_true",
+                        help="actualise et affiche le classement saisonnier partage")
+    parser.add_argument("--duel-name", default=None, metavar="NOM",
+                        help="nom de cette machine dans le classement de duel")
     parser.add_argument("--transpose", type=int, default=0, metavar="DEMI-TONS",
                         help="decale la melodie de N demi-tons, en plus du recentrage "
                              "automatique sur la hauteur du doot (defaut 0)")
@@ -1715,6 +1779,14 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                              f"tour complet (defaut {DEFAULT_SPIN_CHANCE})")
     parser.add_argument("--spin-ms", type=int, default=DEFAULT_SPIN_MS,
                         help=f"duree du tour complet en millisecondes (defaut {DEFAULT_SPIN_MS})")
+    parser.add_argument("--reverse", action="store_true",
+                        help="retourne ce doot et joue son WAV a l'envers")
+    parser.add_argument("--no-reverse", action="store_true",
+                        help="desactive les apparitions inversees")
+    parser.add_argument("--reverse-chance", type=float, default=DEFAULT_REVERSE_CHANCE,
+                        metavar="PART",
+                        help="proportion de doots retournes avec leur son inverse "
+                             f"(defaut {DEFAULT_REVERSE_CHANCE})")
     parser.add_argument("--screen", default=None, metavar="CHOIX",
                         help="ecran d'apparition : 'random' (defaut), 'primary', "
                              "ou un index (0, 1, 2...). Voir 'doot --screens'.")
@@ -1766,6 +1838,10 @@ def parse_args(argv: list[str] | None = None):
             args.no_spin = False
     if "--no-spin" in raw:
         args.spin = False
+    if "--reverse" in raw and "--no-reverse" not in raw:
+        args.no_reverse = False
+    if "--no-reverse" in raw:
+        args.reverse = False
     args._profile_loaded = selected
     return args
 
@@ -1791,6 +1867,7 @@ def main(argv: list[str] | None = None) -> int:
     args.event_chance = max(0.0, min(1.0, args.event_chance))
     args.event_pity = max(0, args.event_pity)
     args.contagion_chance = max(0.0, min(1.0, args.contagion_chance))
+    args.reverse_chance = max(0.0, min(1.0, args.reverse_chance))
 
     p = paths()
     p["data"].mkdir(parents=True, exist_ok=True)
@@ -1837,6 +1914,10 @@ def main(argv: list[str] | None = None) -> int:
         return do_stats(args)
     if args.carte is not None:
         return do_carte(args, args.carte)
+    if args.duel_name is not None:
+        return do_duel_name(args, args.duel_name)
+    if args.duel_board:
+        return do_duel_board(args)
     if args.sync_init is not None:
         return do_sync_init(args, args.sync_init)
     if args.sync_join is not None:

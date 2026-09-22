@@ -20,6 +20,7 @@ class CatalogueGraphique(unittest.TestCase):
             "--check-update", "--profiles", "--save-profile",
             "--activate-profile", "--deactivate-profile", "--delete-profile",
             "--screens", "--regen-sound", "--version", "--help", "--gui",
+            "--duel-board", "--duel-name",
         }
         self.assertEqual(options, attendues)
 

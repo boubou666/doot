@@ -157,6 +157,11 @@ def pick_side(side: str | None, rng=random) -> str:
     return rng.choice(COTES)
 
 
+def image_turns(side: str | None, reverse: bool = False) -> int:
+    """Quarts de tour cumulant le bord d'entree et le demi-tour reverse."""
+    return ((TOURS[side] if side else 0) + (2 if reverse else 0)) % 4
+
+
 def _rotated_photo(tk, image_path: Path, scale: float, tours: int):
     """Charge un PNG pivote de `tours` quarts de tour, transparence comprise.
 
@@ -250,7 +255,7 @@ def active_monitors() -> list:
 
 def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
                spatialise, slide=True, side=None, slide_ms=420, spin=False,
-               spin_ms=700, beats=None, voices=None) -> bool:
+               spin_ms=700, beats=None, voices=None, reverse=False) -> bool:
     """Tente les overlays sans tkinter ; faux si tkinter doit prendre le relais.
 
     Wayland passe en premier : layer-shell sait poser la surface sur la sortie
@@ -266,14 +271,15 @@ def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
     for backend, enumere in ((wayland, wayland.monitors), (x11, screens.monitors)):
         if _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
                           image_path, scale, screen, spatialise, slide, side,
-                          slide_ms, spin, spin_ms, beats, voices):
+                          slide_ms, spin, spin_ms, beats, voices, reverse):
             return True
     return False
 
 
 def _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
                    image_path, scale, screen, spatialise, slide, side,
-                   slide_ms, spin, spin_ms, beats=None, voices=None) -> bool:
+                   slide_ms, spin, spin_ms, beats=None, voices=None,
+                   reverse=False) -> bool:
     if not backend.available():
         return False
 
@@ -299,9 +305,11 @@ def _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
         frame = png.frame(image_path, wanted)
 
         entree = pick_side(side) if slide else None
-        if entree:
-            # Le bas de l'image se pose contre le bord d'entree.
-            frame = frame.rotated(TOURS[entree])
+        tours = image_turns(entree, reverse)
+        if tours:
+            # Le bas de l'image se pose contre le bord d'entree ; le doot
+            # reverse ajoute un demi-tour a cette orientation.
+            frame = frame.rotated(tours)
 
         spins = png.spin_frames(frame) if spin else None
         if spins:
@@ -359,6 +367,8 @@ def show(
     beats: list | None = None,
     voices: list[list] | None = None,
     glitch: bool = False,
+    reverse: bool = False,
+    visual_text: str | None = None,
 ) -> None:
     """Affiche un doot et rend la main quand il a disparu.
 
@@ -385,9 +395,16 @@ def show(
     debout : ni glissement ni tour complet. Une image PNG se penche autour du
     poing ; l'ASCII art fait voler ses lettres ; un GIF garde sa propre
     animation.
+
+    `reverse` ajoute un demi-tour a l'image. `visual_text` remplace le rendu
+    par un message geant, notamment lorsque la sortie audio est muette.
     """
     if beats or voices:
         slide = False
+        spin = False
+    if reverse:
+        # Une apparition reverse doit rester reconnaissable comme telle, pas
+        # se redresser aussitot au premier quart d'un tour complet.
         spin = False
     slide = decide_slide(slide, side, slide_chance)
     # Un tour de duree nulle n'est pas un tour : il ne ferait que payer les
@@ -395,9 +412,10 @@ def show(
     spin = decide_spin(spin, spin_chance, slide) and spin_ms > 0
     # Le faux bug deplace sa fenetre de facon volontairement irreguliere ; les
     # backends ARGB savent jouer une entree normale, mais pas cette chute.
-    if not glitch and _show_argb(
+    if not glitch and not visual_text and _show_argb(
             wav_path, duration, center, opacity, image_path, scale, screen,
-            spatialise, slide, side, slide_ms, spin, spin_ms, beats, voices):
+            spatialise, slide, side, slide_ms, spin, spin_ms, beats, voices,
+            reverse):
         return
 
     tk, tkfont = _import_tk()
@@ -423,12 +441,12 @@ def show(
     # Le bord d'entree decide de l'orientation : le bas de l'image doit se
     # poser contre lui. Il se choisit donc avant de charger quoi que ce soit.
     entree = pick_side(side) if slide else None
-    tours = TOURS[entree] if entree else 0
+    tours = image_turns(entree, reverse)
 
     frames: list = []
     spins: list = []
     bobs: list = []
-    if image_path is not None:
+    if image_path is not None and not visual_text:
         try:
             probe = tk.PhotoImage(file=str(image_path)) if image_path.suffix.lower() != ".gif" \
                 else tk.PhotoImage(file=str(image_path), format="gif -index 0")
@@ -479,11 +497,11 @@ def show(
         else:
             label = tk.Label(
                 holder,
-                text=art.widest_frame(),
-                font=_pick_font(tkfont, font_size),
+                text=visual_text or art.widest_frame(),
+                font=_pick_font(tkfont, 84 if visual_text else font_size),
                 fg=FOREGROUND,
-                justify="left",
-                anchor="nw",
+                justify="center" if visual_text else "left",
+                anchor="center" if visual_text else "nw",
                 padx=6,
                 pady=6,
                 **widget_kwargs,
@@ -509,7 +527,7 @@ def show(
     # d'un quart de tour ne veulent plus rien dire. On se contente de le
     # retourner quand il entre par la droite.
     retourne = not frames and entree == "right"
-    if not frames:
+    if not frames and not visual_text:
         for label in labels:
             label.configure(text=art.frame(0, mirrored=retourne))
 
@@ -605,6 +623,8 @@ def show(
                     state["step"] = wanted
                     for musicien in labels:
                         musicien.configure(image=frames[wanted])
+        elif visual_text:
+            pass
         elif beats or voices:
             # Les lettres s'envolent sur la voix de chaque squelette.
             for index, (musicien, penche) in enumerate(zip(labels, etapes)):
