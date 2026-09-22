@@ -226,7 +226,13 @@ doot --gui       # ouvre le grimoire graphique
 doot-gui         # raccourci equivalent apres installation
 ```
 
-Le grimoire rassemble toutes les actions et tous les réglages de la CLI. Chaque
+Le grimoire sépare désormais **Outils** et **Jeu** : chaque espace possède des
+sous-menus thématiques repliables. Le Jeu ouvre directement un écran jouable :
+scènes et décisions de la campagne, construction de la Cité, conduite du Train,
+recrutement et missions de l'équipage, fronts d'après-campagne et énigmes se
+pilotent par boutons, sans taper de commandes. Il masque les réglages techniques ;
+les outils gardent le contrôle du daemon,
+de la musique, des exports et des données. Chaque
 action possède sa vignette, la commande exacte reste visible avant son lancement
 et sa sortie s'affiche dans un journal intégré, jusque dans des barres de
 défilement en forme d'os. Le daemon peut être lancé en arrière-plan : fermer le
@@ -641,13 +647,31 @@ les préférences de mouvements réduits. Les apparitions ordinaires du daemon
 gardent leur cadence réglable avec `--min`, `--max` et `--quiet-hours` :
 la campagne avance seulement quand tu choisis.
 
+### Le Monde après l'Aube
+
+Après une première fin, quatre fronts réagissent à tes décisions. Les missions
+des cinq membres recrutés dans le Dernier Train peuvent réparer une trahison.
+Le carnet indique les objectifs sans dévoiler les énigmes, sauf si tu demandes
+explicitement les indices. Les trois fins, les quatre fronts d'une même fin et
+les cinq missions ouvrent la Huitième Porte.
+
+```bash
+doot --carnet                         # objectifs sans spoilers
+doot --carnet-secrets                 # indices volontaires
+doot --after-dawn                     # fronts et choix disponibles
+doot --after-dawn-choose cite rebatir
+doot --crew-missions                  # compagnons et missions
+doot --crew-mission controleuse soutenir
+doot --eighth-door                    # traces et énigme finale
+```
+
 ## 🏆 Les succès
 
 Doot garde sa progression **uniquement en local**, dans le même `state.json` que
 le compteur de mélodies (`doot --paths` montre son emplacement). Aucun compte,
 aucune connexion et aucune télémétrie : les apparitions, les salves, les mélodies,
 les bords imposés, les formations, les événements et les profils débloquent
-83 succès pour un total de 2 745 points.
+87 succès pour un total de 2 960 points.
 
 ```bash
 doot --achievements     # alias français : doot --succes

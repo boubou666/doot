@@ -70,6 +70,8 @@ class CatalogueGraphique(unittest.TestCase):
             "--train-replay", "--lost-station", "--thirteenth-bell",
             "--grand-retour", "--grand-retour-restart", "--grand-retour-choose",
             "--grand-retour-secret", "--grand-retour-export",
+            "--after-dawn", "--after-dawn-choose", "--crew-missions",
+            "--crew-mission", "--carnet", "--carnet-secrets", "--eighth-door",
             "--accessibility",
         }
         self.assertEqual(options, attendues)
@@ -99,6 +101,18 @@ class CatalogueGraphique(unittest.TestCase):
         command = next(item for item in gui.COMMANDS if item.key == "grand-retour-secret")
         argv = gui.build_command_argv(command, {}, {}, (), strict=True)
         self.assertEqual(argv, ["--grand-retour-secret"])
+
+    def test_jeu_et_outils_ont_des_sous_menus_distincts(self):
+        self.assertEqual(gui.command_section("carnet"), ("game", "Campagnes & carnet"))
+        self.assertEqual(gui.command_section("daemon"), ("tools", "Invocation & musique"))
+        self.assertEqual({item.key for item in gui.COMMANDS},
+                         set(gui.GAME_KEYS) | {item.key for item in gui.COMMANDS
+                                               if gui.command_section(item.key)[0] == "tools"})
+
+    def test_choix_du_monde_compose_deux_arguments(self):
+        item = next(command for command in gui.COMMANDS if command.key == "after-dawn-choose")
+        self.assertEqual(gui.build_command_argv(item, {"--after-dawn-choose": "cite; rebatir"}, {}, ()),
+                         ["--after-dawn-choose", "cite", "rebatir"])
 
 
 class CompositionCommande(unittest.TestCase):

@@ -12,6 +12,22 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.32.0] - 2026-09-22
+
+### Ajouté
+- Le monde après l'Aube conserve les conséquences de chaque fin sur quatre
+  fronts. La Cité reçoit des os, le Dernier Train une réserve ponctuelle et
+  la Némésis change de rancune selon les choix.
+- Cinq missions de l'équipage spectral permettent de renouer les liens après
+  une trahison. La Huitième Porte relie les trois fins, quatre décisions du
+  monde et les cinq compagnons dans une dernière énigme.
+- Un carnet de route consultable dans la CLI et les Chroniques de la GUI suit
+  les prérequis. Les indices secrets restent masqués sans demande explicite.
+- La GUI sépare désormais Jeu et Outils, avec des sous-menus repliables et un
+  écran de jeu cliquable pour la campagne, la Cité, le Train, l'équipage,
+  l'après-campagne et les énigmes, sans réglages techniques. Quatre succès et quatre illustrations
+  originales portent le total à 87 médailles et 2 960 points.
+
 ## [1.31.0] - 2026-09-22
 
 ### Ajouté
@@ -907,7 +923,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.31.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.32.0...HEAD
+[1.32.0]: https://github.com/boubou666/doot/compare/v1.31.0...v1.32.0
 [1.31.0]: https://github.com/boubou666/doot/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/boubou666/doot/compare/v1.29.0...v1.30.0
 [1.29.0]: https://github.com/boubou666/doot/compare/v1.28.0...v1.29.0
