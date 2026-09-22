@@ -17,7 +17,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from . import (
-    __version__, adventure, art, carte, challenges, choreography, coffre, codex,
+    __version__, adventure, after_dawn, art, carte, challenges, choreography, coffre, codex,
     contagion, content, duel, grand_retour, history, image, notification, packs, partage,
     procedural, profiles, registre, replay, rituals, schedule, season, sound, succes,
     wave3, wave4, wave5, wave6,
@@ -2491,6 +2491,72 @@ def do_grand_retour_export(args, destination: str) -> int:
     return 0
 
 
+def do_after_dawn(args, choice: list[str] | None = None) -> int:
+    state = read_state()
+    before = after_dawn.world_status(state)
+    if choice:
+        try:
+            after_dawn.choose_world(state, *choice)
+        except ValueError as exc:
+            print(f"doot : {exc}")
+            return 2
+        write_state(state)
+    item = after_dawn.world_status(state)
+    print("MONDE APRES L'AUBE — " + (item["ending"].upper() if item["available"] else "VERROUILLE"))
+    print(item["scene"])
+    for key, front in item["fronts"].items():
+        print(f"  {key} : {front['choice'] or front['scene']}")
+        if not front["choice"] and item["available"]:
+            print("    Choix : " + ", ".join(front["options"]))
+    if choice and before["completed"] < 4 and item["completed"] == 4:
+        note_succes(args, "after_dawn", world=True)
+    return 0
+
+
+def do_crew_missions(args, choice: list[str] | None = None) -> int:
+    state = read_state()
+    before = after_dawn.crew_status(state)
+    if choice:
+        try:
+            after_dawn.choose_mission(state, *choice)
+        except ValueError as exc:
+            print(f"doot : {exc}")
+            return 2
+        write_state(state)
+    item = after_dawn.crew_status(state)
+    print(f"MISSIONS DE L'EQUIPAGE — {item['completed']}/5")
+    for key, member in item["members"].items():
+        print(f"  {key} ({member['name']}) : " +
+              (member["choice"] or member["scene"] if member["recruited"] else "a recruter"))
+    if item["redeemed"]:
+        print("La trahison a trouve son repentir.")
+    if choice:
+        note_succes(args, "after_dawn", crew=item["completed"] == 5 and before["completed"] < 5,
+                    redeemed=item["redeemed"] and not before["redeemed"])
+    return 0
+
+
+def do_eighth_door(args, answer: str) -> int:
+    state = read_state()
+    before = after_dawn.door_status(state)
+    try:
+        item = after_dawn.solve_door(state, answer) if answer else before
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    if item["solved"] and not before["solved"]:
+        write_state(state)
+        note_succes(args, "after_dawn", door=True)
+    print(f"HUITIEME PORTE — {item['found']}/8 traces")
+    for index, found in enumerate(item["clues"], 1):
+        print(f"  [{'x' if found else ' '}] Trace {index}")
+    if item["riddle"]:
+        print(item["riddle"])
+    if item["epilogue"]:
+        print(item["epilogue"])
+    return 0
+
+
 def do_snooze(args, value: str) -> int:
     try:
         until = schedule.duration(value)
@@ -3794,6 +3860,20 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                         metavar="REPONSE", help="examine ou resout l'enigme de l'aube")
     parser.add_argument("--grand-retour-export", default=None, metavar="HTML",
                         help="exporte un journal HTML autonome")
+    parser.add_argument("--after-dawn", action="store_true",
+                        help="examine les consequences de la derniere fin")
+    parser.add_argument("--after-dawn-choose", nargs=2, default=None,
+                        metavar=("FRONT", "CHOIX"), help="decide un front du monde")
+    parser.add_argument("--crew-missions", action="store_true",
+                        help="examine les missions de l'equipage spectral")
+    parser.add_argument("--crew-mission", nargs=2, default=None,
+                        metavar=("MEMBRE", "CHOIX"), help="decide une mission de l'equipage")
+    parser.add_argument("--carnet", action="store_true",
+                        help="affiche les objectifs sans reveler les enigmes")
+    parser.add_argument("--carnet-secrets", action="store_true",
+                        help="affiche le carnet avec indices secrets")
+    parser.add_argument("--eighth-door", nargs="?", const="", default=None,
+                        metavar="REPONSE", help="examine ou resout la Huitieme Porte")
     parser.add_argument("--accessibility", action="store_true",
                         help="affiche les reglages d'accessibilite actifs")
     parser.add_argument("--fleet-parade", nargs="?", const="", default=None,
@@ -4367,6 +4447,19 @@ def main(argv: list[str] | None = None) -> int:
         return do_grand_retour_secret(args, args.grand_retour_secret)
     if args.grand_retour_export:
         return do_grand_retour_export(args, args.grand_retour_export)
+    if args.after_dawn_choose:
+        return do_after_dawn(args, args.after_dawn_choose)
+    if args.after_dawn:
+        return do_after_dawn(args)
+    if args.crew_mission:
+        return do_crew_missions(args, args.crew_mission)
+    if args.crew_missions:
+        return do_crew_missions(args)
+    if args.carnet or args.carnet_secrets:
+        print("\n".join(after_dawn.carnet_lines(read_state(), secrets=args.carnet_secrets)))
+        return 0
+    if args.eighth_door is not None:
+        return do_eighth_door(args, args.eighth_door)
     if args.accessibility:
         return do_accessibility(args)
     if args.melodies:

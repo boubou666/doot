@@ -45,6 +45,8 @@ TOTAUX = (
     "collections_archeologiques", "reseaux_ferroviaires_maitrises",
     "grands_retours", "equipages_fideles", "trois_destins_vus",
     "aubes_invisibles",
+    "mondes_apres_aube", "equipages_reunis", "repentirs_spectraux",
+    "huitiemes_portes",
 )
 MAXIMA = ("plus_grande_salve", "voix_max", "serie_defis")
 ENSEMBLES = (
@@ -383,6 +385,21 @@ CATALOGUE = (
            _valeur("aubes_invisibles"), True,
            ("Sept nuits gardent sept souvenirs.",
             "L'equipage doit rester fidele jusqu'a l'aube.")),
+    Succes("cartographe_apres_aube", "Cartographe de l'apres-aube",
+           "Decider les quatre fronts du monde apres une fin.", 40, 1,
+           _valeur("mondes_apres_aube")),
+    Succes("famille_des_ombres", "Famille des ombres",
+           "Terminer les cinq missions de l'equipage spectral.", 40, 1,
+           _valeur("equipages_reunis")),
+    Succes("repentir_spectral", "Repentir spectral",
+           "Reparer une trahison par trois missions loyales.", 50, 1,
+           _valeur("repentirs_spectraux"), True,
+           ("Une clef a change de main.", "Trois compagnons peuvent la reprendre.")),
+    Succes("huitieme_porte", "La Huitieme Porte",
+           "Reunir huit traces et resoudre l'enigme de la memoire.", 85, 1,
+           _valeur("huitiemes_portes"), True,
+           ("Trois fins, quatre fronts, un equipage.",
+            "Ce qui garde tous les chemins ne choisit aucun d'eux.")),
 )
 
 
@@ -736,6 +753,16 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
     elif evenement == "grand_retour_secret":
         if details.get("solved") is True:
             _ajoute(stats, "aubes_invisibles", origine)
+
+    elif evenement == "after_dawn":
+        if details.get("world") is True:
+            _ajoute(stats, "mondes_apres_aube", origine)
+        if details.get("crew") is True:
+            _ajoute(stats, "equipages_reunis", origine)
+        if details.get("redeemed") is True:
+            _ajoute(stats, "repentirs_spectraux", origine)
+        if details.get("door") is True:
+            _ajoute(stats, "huitiemes_portes", origine)
 
     return _debloquer(etat, maintenant)
 

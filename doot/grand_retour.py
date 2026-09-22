@@ -213,6 +213,9 @@ def start(state: dict, *, restart: bool = False) -> dict:
         return status(state)
     if restart and run is not None and not run.get("completed"):
         raise ValueError("termine d'abord les sept nuits avant de recommencer")
+    if run is not None and run.get("completed") and run.get("ending") in ENDINGS:
+        root.setdefault("last_ending", run["ending"])
+        root.setdefault("last_betrayed", bool(run.get("betrayed")))
     root["run"] = {
         "night": 1, "trust": 0, "hope": 0, "resolve": 0,
         "companion": "incertain", "history": [], "clues": [],
@@ -272,6 +275,8 @@ def choose(state: dict, action: str) -> dict:
             ending = "cendres"
         run["completed"] = True
         run["ending"] = ending
+        _root(state)["last_ending"] = ending
+        _root(state)["last_betrayed"] = bool(run.get("betrayed"))
         endings = _root(state).get("endings")
         if not isinstance(endings, list):
             endings = []

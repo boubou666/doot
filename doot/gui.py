@@ -19,7 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from . import challenges, composer, grand_retour, history, registre, season, succes
+from . import after_dawn, challenges, composer, grand_retour, history, registre, season, succes, wave4, wave6
 
 
 ASSETS_DIR = Path(__file__).with_name("assets")
@@ -779,6 +779,23 @@ COMMANDS: tuple[CommandSpec, ...] = (
                 "Cree un journal HTML autonome du Grand Retour.",
                 parameters=(ParameterSpec("--grand-retour-export", "Destination", "grand-retour.html"),),
                 image="success/veilleur_sept_nuits.png"),
+    CommandSpec("carnet", "Carnet de route", "Suit les objectifs et prerequis sans reveler les secrets.",
+                ("--carnet",), image="success/cartographe_apres_aube.png"),
+    CommandSpec("carnet-secrets", "Indices du carnet", "Revele les pistes des enigmes sur demande.",
+                ("--carnet-secrets",), image="success/huitieme_porte.png"),
+    CommandSpec("after-dawn", "Le Monde apres l'Aube", "Examine quatre fronts changes par la fin obtenue.",
+                ("--after-dawn",), image="success/cartographe_apres_aube.png"),
+    CommandSpec("after-dawn-choose", "Decider un front", "Choisis une consequence pour la Cite, le rail, la Nemesis ou les apparitions.",
+                parameters=(ParameterSpec("--after-dawn-choose", "Front; choix", "cite; rebatir", True),),
+                image="success/cartographe_apres_aube.png"),
+    CommandSpec("crew-missions", "Missions de l'equipage", "Retrouve les cinq compagnons du Dernier Train.",
+                ("--crew-missions",), image="success/famille_des_ombres.png"),
+    CommandSpec("crew-mission", "Choisir une mission", "Soutiens ou sacrifies un compagnon recrute.",
+                parameters=(ParameterSpec("--crew-mission", "Membre; choix", "controleuse; soutenir", True),),
+                image="success/repentir_spectral.png"),
+    CommandSpec("eighth-door", "La Huitieme Porte", "Cherche les huit traces de l'enigme finale.",
+                ("--eighth-door",), parameters=(ParameterSpec("", "Reponse", "memoire", False, False),),
+                image="success/huitieme_porte.png"),
     CommandSpec("accessibility", "Accessibilite", "Resume les protections visuelles et sonores.",
                 ("--accessibility",), image="logo.png"),
     CommandSpec(
@@ -803,7 +820,86 @@ ONGLETS_ETAT = {
     "history": ("_refresh_chronicles", "chronicles_tab"),
     "challenge": ("_refresh_chronicles", "chronicles_tab"),
     "grand-retour": ("_refresh_chronicles", "chronicles_tab"),
+    "carnet": ("_refresh_chronicles", "chronicles_tab"),
+    "carnet-secrets": ("_refresh_chronicles", "chronicles_tab"),
+    "after-dawn": ("_refresh_chronicles", "chronicles_tab"),
+    "crew-missions": ("_refresh_chronicles", "chronicles_tab"),
+    "eighth-door": ("_refresh_chronicles", "chronicles_tab"),
 }
+
+
+GAME_GROUPS = {
+    "Campagnes & carnet": (
+        "carnet", "carnet-secrets", "campaign", "campaign-choose", "new-game-plus",
+        "grand-retour", "grand-retour-choose", "grand-retour-restart",
+        "after-dawn", "after-dawn-choose", "legacy", "story-constellation",
+    ),
+    "Enigmes & secrets": (
+        "riddles", "code-hunt", "code-submit", "glyphs", "glyph-decode",
+        "seals", "seal-submit", "lost-station", "thirteenth-bell",
+        "grand-retour-secret", "eighth-door", "time-loop", "prophecy",
+    ),
+    "Exploration & rail": (
+        "expedition", "expedition-choose", "catacombs", "catacomb-choose",
+        "ghost-train", "train-choose", "rail-case", "rail-investigate",
+        "archaeology", "restore-artifact", "black-market", "investigation",
+        "investigate", "ghost-race", "night-calendar", "paranormal-weather",
+    ),
+    "Combats & defis": (
+        "challenge", "duel-board", "duel-name", "boss", "boss-hit", "invasion",
+        "combo", "music-duel", "music-duels", "night-infinite", "nemesis",
+        "mirror-boss", "nemesis-invasion", "invasion-defend", "musical-battle",
+        "battle-note", "collective-ritual", "ritual-offer", "tribunal",
+        "tribunal-action", "coop",
+    ),
+    "Cite & compagnons": (
+        "city", "factions", "faction-mission", "relics", "necroforge",
+        "familiars", "familiar", "familiar-bond", "familiar-skill", "bestiary",
+        "spectral-crew", "crew-missions", "crew-mission", "funeral-house",
+        "house-mission", "skeletons", "skeleton", "contract", "contract-add",
+    ),
+}
+GAME_KEYS = frozenset(key for keys in GAME_GROUPS.values() for key in keys)
+TOOL_GROUPS = {
+    "Invocation & musique": (
+        "daemon", "tray", "once", "play", "rickroll", "melodies", "composer",
+        "events", "event", "event-save", "favor-melody", "disable-melody",
+        "enable-melody", "favor-event", "disable-event", "enable-event",
+        "generate-melody", "studio-live", "dj-import", "radio", "adaptive-score",
+        "ambient-mode", "regen-sound", "art",
+    ),
+    "Creation & exports": (
+        "content", "pack-export", "pack-import", "pack-library", "campaign-editor",
+        "campaign-pack", "campaign-lab", "campaign-check", "character", "characters",
+        "character-pack", "choreographer", "choreographies", "choreography-save",
+        "choreography-play", "director", "photo-booth", "workshop-validate",
+        "mod-forge", "mod-validate", "replay-export", "replay-gif", "train-replay",
+        "grand-retour-export", "crypt-gazette", "ghost-export", "constellation",
+        "ritual-export", "ritual-import", "contract-share", "contract-join",
+    ),
+    "Archives & partage": (
+        "achievements", "carte", "stats", "history", "museum", "personal-museum",
+        "codex", "fleet-parade", "remote", "remote-serve", "sync-init",
+        "sync-join", "export", "merge", "rituals", "ritual-add", "ritual-delete",
+    ),
+    "Application": (
+        "status", "stop", "snooze", "resume", "screens", "profiles",
+        "save-profile", "activate-profile", "deactivate-profile", "delete-profile",
+        "schedule-profile", "unschedule-profile", "paths", "check-update", "update",
+        "accessibility", "help", "version",
+    ),
+}
+
+
+def command_section(key: str) -> tuple[str, str]:
+    """Mode et sous-menu d'une commande, sans dependance a Tkinter."""
+    for title, keys in GAME_GROUPS.items():
+        if key in keys:
+            return "game", title
+    for title, keys in TOOL_GROUPS.items():
+        if key in keys:
+            return "tools", title
+    return "tools", "Autres outils"
 
 
 COMMAND_OPTIONS = {
@@ -1055,6 +1151,10 @@ class DootApp:
         self.setting_vars: dict[str, object] = {}
         self.parameter_vars: dict[str, object] = {}
         self.command_buttons: dict[str, object] = {}
+        self.gallery_mode = "tools"
+        self.game_pending = False
+        self.expanded_groups = {"game": {"Campagnes & carnet"},
+                                "tools": {"Invocation & musique"}}
         self.images: dict[str, object] = {}
         self.events: queue.Queue = queue.Queue()
         self.processes: list[subprocess.Popen] = []
@@ -1163,8 +1263,9 @@ class DootApp:
             copy, text="LE GRIMOIRE DE DOOT", bg=self.BG, fg=self.GOLD,
             font=("Segoe UI", 10, "bold"), anchor="w",
         ).pack(fill="x")
+        self.hero_title = self.tk.StringVar(value="Invoque chaque commande\nsans quitter la crypte.")
         self.tk.Label(
-            copy, text="Invoque chaque commande\nsans quitter la crypte.",
+            copy, textvariable=self.hero_title,
             bg=self.BG, fg=self.BONE, font=("Georgia", 27, "bold"),
             justify="left", anchor="w",
         ).pack(fill="x", pady=(6, 8))
@@ -1202,10 +1303,23 @@ class DootApp:
         self._build_details(details)
 
     def _build_gallery(self, parent) -> None:
-        self.tk.Label(
-            parent, text="COMMANDES", bg=self.PANEL, fg=self.GOLD_LIGHT,
-            font=("Georgia", 14, "bold"), anchor="w",
-        ).pack(fill="x", padx=18, pady=(17, 10))
+        self.gallery_heading = self.tk.StringVar(value="OUTILS DOOT")
+        self.tk.Label(parent, textvariable=self.gallery_heading, bg=self.PANEL,
+                      fg=self.GOLD_LIGHT, font=("Georgia", 14, "bold"),
+                      anchor="w").pack(fill="x", padx=18, pady=(17, 8))
+        modes = self.tk.Frame(parent, bg=self.PANEL)
+        modes.pack(fill="x", padx=14, pady=(0, 10))
+        for label, mode in (("OUTILS", "tools"), ("JEU", "game")):
+            self.tk.Button(modes, text=label,
+                           command=lambda value=mode: self._switch_gallery(value),
+                           bg=self.CARD_ACTIVE if mode == self.gallery_mode else self.CARD,
+                           fg=self.GOLD_LIGHT, activebackground=self.CARD_ACTIVE,
+                           activeforeground=self.BONE, bd=0, relief="flat",
+                           font=("Segoe UI", 10, "bold"), cursor="hand2").pack(
+                               side="left", fill="x", expand=True, padx=3, ipady=8)
+            if not hasattr(self, "mode_buttons"):
+                self.mode_buttons = {}
+            self.mode_buttons[mode] = modes.winfo_children()[-1]
 
         canvas = self.tk.Canvas(parent, bg=self.PANEL, highlightthickness=0, bd=0)
         scrollbar = self._bone_scrollbar(parent, canvas.yview, self.PANEL)
@@ -1217,19 +1331,74 @@ class DootApp:
         holder.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.bind("<Configure>", lambda event: canvas.itemconfigure(window, width=event.width))
         self._wheel_scroll(canvas, holder)
+        self.gallery_holder = holder
+        self.gallery_canvas = canvas
+        self._render_gallery()
 
-        for command in COMMANDS:
-            image = self._load_image(command.image)
-            button = self.tk.Button(
-                holder, text=command.title, image=image, compound="left",
-                command=lambda key=command.key: self._select_command(key),
-                bg=self.CARD, fg=self.BONE, activebackground=self.CARD_ACTIVE,
-                activeforeground=self.GOLD_LIGHT, bd=0, relief="flat",
-                anchor="w", justify="left", padx=10, pady=8,
-                font=("Segoe UI", 10, "bold"), cursor="hand2",
-            )
-            button.pack(fill="x", padx=5, pady=3)
-            self.command_buttons[command.key] = button
+    def _switch_gallery(self, mode: str) -> None:
+        if mode not in ("tools", "game"):
+            return
+        self.gallery_mode = mode
+        self.gallery_heading.set("LE JEU" if mode == "game" else "OUTILS DOOT")
+        self.hero_title.set("Entre dans l'histoire\net choisis ton destin." if mode == "game"
+                            else "Invoque chaque commande\nsans quitter la crypte.")
+        if mode == "game":
+            self.notebook.hide(self.options_tab)
+            self.notebook.select(self.game_tab)
+        else:
+            self.notebook.add(self.options_tab)
+            self.notebook.insert(0, self.options_tab)
+            self.notebook.hide(self.game_tab)
+        for key, button in self.mode_buttons.items():
+            button.configure(bg=self.CARD_ACTIVE if key == mode else self.CARD)
+        self._render_gallery()
+        self._select_command("carnet" if mode == "game" else "daemon")
+
+    def _toggle_group(self, title: str) -> None:
+        opened = self.expanded_groups[self.gallery_mode]
+        if title in opened:
+            opened.remove(title)
+        else:
+            opened.add(title)
+        self._render_gallery()
+
+    def _render_gallery(self) -> None:
+        holder = self.gallery_holder
+        for child in holder.winfo_children():
+            child.destroy()
+        self.command_buttons.clear()
+        groups = GAME_GROUPS if self.gallery_mode == "game" else TOOL_GROUPS
+        titles = [*groups, "Autres outils"] if self.gallery_mode == "tools" else list(groups)
+        for title in titles:
+            commands = [command for command in COMMANDS
+                        if command_section(command.key) == (self.gallery_mode, title)]
+            if not commands:
+                continue
+            opened = title in self.expanded_groups[self.gallery_mode]
+            self.tk.Button(holder, text=("▾  " if opened else "▸  ") +
+                           f"{title} ({len(commands)})",
+                           command=lambda item=title: self._toggle_group(item),
+                           bg=self.PANEL_2, fg=self.GOLD_LIGHT,
+                           activebackground=self.CARD_ACTIVE,
+                           activeforeground=self.BONE, bd=0, relief="flat",
+                           anchor="w", padx=10, pady=10,
+                           font=("Segoe UI", 10, "bold"), cursor="hand2").pack(
+                               fill="x", padx=5, pady=(5, 1))
+            if not opened:
+                continue
+            for command in commands:
+                image = self._load_image(command.image)
+                button = self.tk.Button(
+                    holder, text=command.title, image=image, compound="left",
+                    command=lambda key=command.key: self._select_command(key),
+                    bg=self.CARD, fg=self.BONE, activebackground=self.CARD_ACTIVE,
+                    activeforeground=self.GOLD_LIGHT, bd=0, relief="flat",
+                    anchor="w", justify="left", padx=10, pady=8,
+                    font=("Segoe UI", 10), cursor="hand2",
+                )
+                button.pack(fill="x", padx=(16, 5), pady=2)
+                self.command_buttons[command.key] = button
+        self.gallery_canvas.yview_moveto(0)
 
     def _build_details(self, parent) -> None:
         parent.grid_columnconfigure(0, weight=1)
@@ -1251,24 +1420,30 @@ class DootApp:
         notebook.grid(row=2, column=0, sticky="nsew", padx=22, pady=(0, 10))
         options_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         achievements_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
+        game_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         registre_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         chronicles_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         output_tab = self.tk.Frame(notebook, bg="#0b0910")
         notebook.add(options_tab, text="  Reglages  ")
+        notebook.add(game_tab, text="  Jouer  ")
         notebook.add(achievements_tab, text="  Succes  ")
         notebook.add(registre_tab, text="  Registre  ")
         notebook.add(chronicles_tab, text="  Chroniques  ")
         notebook.add(output_tab, text="  Sortie  ")
         self.notebook = notebook
+        self.options_tab = options_tab
+        self.game_tab = game_tab
         self.achievements_tab = achievements_tab
         self.registre_tab = registre_tab
         self.chronicles_tab = chronicles_tab
         self.output_tab = output_tab
         self._build_settings(options_tab)
+        self._build_game(game_tab)
         self._build_achievements(achievements_tab)
         self._build_registre(registre_tab)
         self._build_chronicles(chronicles_tab)
         self._build_output(output_tab)
+        notebook.hide(game_tab)
 
         launch = self.tk.Frame(parent, bg=self.PANEL)
         launch.grid(row=3, column=0, sticky="ew", padx=22, pady=(0, 17))
@@ -1646,6 +1821,192 @@ class DootApp:
         self.chronicle_text.configure(state="disabled")
         self._refresh_chronicles()
 
+    def _build_game(self, parent) -> None:
+        """Ecran jouable : les boutons pilotent la meme CLI que le grimoire."""
+        toolbar = self.tk.Frame(parent, bg=self.PANEL_2)
+        toolbar.pack(fill="x", padx=14, pady=(10, 6))
+        self.tk.Label(toolbar, text="AVENTURE", bg=self.PANEL_2,
+                      fg=self.GOLD_LIGHT, font=("Georgia", 15, "bold")).pack(side="left")
+        self.ttk.Button(toolbar, text="Actualiser", style="Clear.TButton",
+                        command=self._refresh_game).pack(side="right")
+        self.game_feedback = self.tk.StringVar(value="Choisis une action pour avancer.")
+        self.tk.Label(parent, textvariable=self.game_feedback, bg=self.PANEL_2,
+                      fg=self.MUTED, anchor="w", wraplength=620,
+                      font=("Segoe UI", 9)).pack(fill="x", padx=18, pady=(0, 7))
+        canvas = self.tk.Canvas(parent, bg=self.PANEL_2, highlightthickness=0, bd=0)
+        scrollbar = self._bone_scrollbar(parent, canvas.yview, self.PANEL_2)
+        holder = self.tk.Frame(canvas, bg=self.PANEL_2)
+        window = canvas.create_window((0, 0), window=holder, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y", padx=(0, 3), pady=(0, 10))
+        canvas.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=(0, 10))
+        holder.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda event: canvas.itemconfigure(window, width=event.width))
+        self._wheel_scroll(canvas, holder)
+        self.game_canvas = canvas
+        self.game_holder = holder
+        self._refresh_game()
+
+    def _game_card(self, title: str, key: str):
+        card = self.tk.Frame(self.game_holder, bg=self.CARD, bd=1,
+                             highlightbackground="#4c365a", highlightthickness=1)
+        card.pack(fill="x", padx=8, pady=7)
+        self.tk.Label(card, text=title, bg=self.CARD, fg=self.GOLD_LIGHT,
+                      font=("Georgia", 13, "bold"), anchor="w").pack(
+                          fill="x", padx=14, pady=(12, 6))
+        self.game_sections[key] = card
+        return card
+
+    def _game_text(self, parent, value: str, *, muted: bool = False) -> None:
+        self.tk.Label(parent, text=value, bg=self.CARD,
+                      fg=self.MUTED if muted else self.BONE,
+                      font=("Segoe UI", 9), anchor="w", justify="left",
+                      wraplength=600).pack(fill="x", padx=14, pady=3)
+
+    def _game_button(self, parent, label: str, argv: list[str]) -> None:
+        self.tk.Button(parent, text=label,
+                       command=lambda words=argv: self._play_game(words),
+                       bg=self.CARD_ACTIVE, fg=self.GOLD_LIGHT,
+                       activebackground="#593469", activeforeground=self.BONE,
+                       bd=0, relief="flat", cursor="hand2", padx=10, pady=6,
+                       font=("Segoe UI", 9, "bold")).pack(
+                           anchor="w", padx=14, pady=3)
+
+    def _refresh_game(self) -> None:
+        from . import cli
+
+        state = cli.read_state()
+        for child in self.game_holder.winfo_children():
+            child.destroy()
+        self.game_sections = {}
+
+        card = self._game_card("Carnet de route", "carnet")
+        for line in after_dawn.carnet_lines(state):
+            self._game_text(card, line)
+        self.tk.Frame(card, bg=self.CARD, height=8).pack()
+
+        campaign = grand_retour.status(state)
+        card = self._game_card("La Nuit du Grand Retour", "campaign")
+        if not campaign["started"]:
+            self._game_text(card, "Sept nuits, trois fins et un equipage qui se souvient.")
+            self._game_button(card, "Commencer la campagne", ["--grand-retour"])
+        elif campaign["completed"]:
+            self._game_text(card, "Fin : " + campaign["ending"].upper())
+            self._game_text(card, grand_retour.ENDINGS.get(campaign["ending"], ""))
+            self._game_button(card, "Rejouer les sept nuits", ["--grand-retour-restart"])
+        else:
+            self._game_text(card, f"Nuit {campaign['night']}/7 — {campaign['title']}")
+            self._game_text(card, campaign["scene"])
+            self._game_text(card, f"Confiance {campaign['trust']} · Espoir {campaign['hope']} · "
+                            f"Volonte {campaign['resolve']}", muted=True)
+            for option in campaign["options"]:
+                if option["available"]:
+                    self._game_button(card, option["text"],
+                                      ["--grand-retour-choose", option["id"]])
+                else:
+                    self._game_text(card, option["text"] + " — acquis manquant : " +
+                                    option["requires"], muted=True)
+        secret = grand_retour.secret_status(state)
+        if secret["ready"] and not secret["solved"]:
+            self._game_text(card, "L'Aube invisible — " + secret["riddle"])
+            answer = self.tk.StringVar()
+            self.ttk.Entry(card, textvariable=answer).pack(fill="x", padx=14, pady=5)
+            self.tk.Button(card, text="Proposer une reponse",
+                           command=lambda field=answer: self._play_game(
+                               ["--grand-retour-secret", field.get().strip()]),
+                           bg=self.CARD_ACTIVE, fg=self.GOLD_LIGHT, bd=0,
+                           relief="flat", padx=10, pady=6).pack(anchor="w", padx=14, pady=5)
+        elif secret["solved"]:
+            self._game_text(card, "L'Aube invisible a ete revelee.")
+
+        city = wave4.city_status(state)
+        card = self._game_card("La Cite des Os", "city")
+        self._game_text(card, f"Niveau {city['level']} · {city['bones']} os disponibles")
+        for building in city["buildings"]:
+            self._game_text(card, f"{building['name']} — niveau {building['level']}/5 · "
+                            f"prochain cout {building['cost']} os")
+            if building["level"] < 5 and city["bones"] >= building["cost"]:
+                self._game_button(card, "Ameliorer " + building["name"],
+                                  ["--city", building["id"]])
+
+        train = wave6.ghost_train_status(state)
+        card = self._game_card("Le Dernier Train", "train")
+        if not train.get("active"):
+            self._game_text(card, "Aucun voyage en cours. Choisis une nouvelle ligne.")
+            self._game_button(card, "Monter a bord", ["--ghost-train"])
+        else:
+            station = train.get("current")
+            self._game_text(card, f"Ligne {train['route']} — integrite {train['integrity']} · "
+                            f"charbon {train['coal']}")
+            if station:
+                self._game_text(card, station["name"] + " — " + station["signal"])
+                for action, label in (("explorer", "Explorer"), ("negocier", "Negocier"),
+                                      ("accelerer", "Accelerer")):
+                    self._game_button(card, label, ["--train-choose", action])
+
+        crew = after_dawn.crew_status(state)
+        card = self._game_card("Equipage spectral", "crew")
+        self._game_text(card, f"{crew['completed']}/5 missions terminees · "
+                        f"{crew['loyal']} liens preserves")
+        if crew["redeemed"]:
+            self._game_text(card, "La trahison a trouve son repentir.")
+        for key, member in crew["members"].items():
+            self._game_text(card, member["name"] + " — " + member["scene"])
+            if not member["recruited"]:
+                self._game_button(card, "Recruter " + member["name"],
+                                  ["--spectral-crew", key])
+            elif not member["choice"] and after_dawn.ending(state):
+                self._game_button(card, "Soutenir " + member["name"],
+                                  ["--crew-mission", key, "soutenir"])
+                self._game_button(card, "Sacrifier " + member["name"],
+                                  ["--crew-mission", key, "sacrifier"])
+            elif member["choice"]:
+                self._game_text(card, "Decision : " + member["choice"], muted=True)
+
+        world = after_dawn.world_status(state)
+        card = self._game_card("Le Monde apres l'Aube", "world")
+        self._game_text(card, world["scene"])
+        if world["available"]:
+            for key, front in world["fronts"].items():
+                self._game_text(card, key.title() + " — " + front["scene"])
+                if front["choice"]:
+                    self._game_text(card, "Decision : " + front["choice"], muted=True)
+                else:
+                    for action, label in front["options"].items():
+                        self._game_button(card, label,
+                                          ["--after-dawn-choose", key, action])
+
+        door = after_dawn.door_status(state)
+        card = self._game_card("La Huitieme Porte", "door")
+        self._game_text(card, f"{door['found']}/8 traces reunies")
+        if door["solved"]:
+            self._game_text(card, door["epilogue"])
+        elif door["ready"]:
+            self._game_text(card, door["riddle"])
+            answer = self.tk.StringVar()
+            self.ttk.Entry(card, textvariable=answer).pack(fill="x", padx=14, pady=5)
+            self.tk.Button(card, text="Ouvrir la porte",
+                           command=lambda field=answer: self._play_game(
+                               ["--eighth-door", field.get().strip()]),
+                           bg=self.CARD_ACTIVE, fg=self.GOLD_LIGHT, bd=0,
+                           relief="flat", padx=10, pady=6).pack(anchor="w", padx=14, pady=(0, 10))
+        else:
+            self._game_text(card, "Les traces se reveleront a mesure que tu joues.", muted=True)
+        self.tk.Frame(card, bg=self.CARD, height=8).pack()
+
+    def _play_game(self, argv: list[str]) -> None:
+        if self.game_pending:
+            return
+        if argv[0] == "--eighth-door" and (len(argv) < 2 or not argv[1]):
+            self.game_feedback.set("Entre une reponse avant d'ouvrir la porte.")
+            return
+        if argv[0] == "--grand-retour-secret" and (len(argv) < 2 or not argv[1]):
+            self.game_feedback.set("Entre une reponse avant de la proposer.")
+            return
+        self.game_pending = True
+        self.game_feedback.set("Action en cours…")
+        self._launch_argv(argv, game_action=True)
+
     def _refresh_chronicles(self) -> None:
         from . import cli
 
@@ -1660,7 +2021,8 @@ class DootApp:
         self.chronicle_summary.set(
             f"Defi : {challenge.title} — {marker}  ·  serie {state.get('challenge_streak', 0)} jour(s)"
         )
-        lines = ["LA NUIT DU GRAND RETOUR"]
+        lines = after_dawn.carnet_lines(state)
+        lines.append("\nLA NUIT DU GRAND RETOUR")
         lines.extend(grand_retour.journal_lines(state))
         lines.append("\nSTATISTIQUES DES 100 DERNIERES ENTREES")
         lines.extend(f"  {kind:<18} {count:>4}" for kind, count in sorted(counts.items()))
@@ -2044,9 +2406,27 @@ class DootApp:
         # Une action qui dit ouvrir quelque chose l'ouvre. L'onglet se relit au
         # passage, puisqu'une commande lancee entre-temps a pu changer l'etat.
         rafraichir, onglet = ONGLETS_ETAT.get(key, (None, None))
-        if onglet is not None:
+        if self.gallery_mode == "game":
+            self.notebook.select(self.game_tab)
+            section = ("door" if key == "eighth-door" else
+                       "world" if key.startswith("after-dawn") else
+                       "crew" if key in ("spectral-crew", "crew-missions", "crew-mission") else
+                       "train" if key.startswith(("ghost-train", "train-", "rail-")) else
+                       "city" if key in ("city", "factions", "faction-mission") else
+                       "campaign" if key.startswith(("grand-retour", "campaign")) else
+                       "carnet")
+            self.root.after_idle(lambda target=section: self._scroll_game_to(target))
+        elif onglet is not None:
             getattr(self, rafraichir)()
             self.notebook.select(getattr(self, onglet))
+
+    def _scroll_game_to(self, key: str) -> None:
+        frame = self.game_sections.get(key)
+        if frame is None:
+            return
+        self.game_holder.update_idletasks()
+        height = max(1, self.game_holder.winfo_height())
+        self.game_canvas.yview_moveto(frame.winfo_y() / height)
 
     def _values(self, variables: Mapping[str, object]) -> dict[str, object]:
         return {name: variable.get() for name, variable in variables.items()}
@@ -2087,10 +2467,12 @@ class DootApp:
 
         self._launch_argv(argv, detached=self._selected_command().detached)
 
-    def _launch_argv(self, argv: list[str], detached: bool = False) -> None:
+    def _launch_argv(self, argv: list[str], detached: bool = False,
+                     game_action: bool = False) -> None:
         """Lance une commande doot et branche sa sortie sur le journal GUI."""
         shown = format_command(argv)
-        self.notebook.select(self.output_tab)
+        if not game_action:
+            self.notebook.select(self.output_tab)
         self._append_output(f"\n❯ {shown}\n", "command")
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
@@ -2122,25 +2504,35 @@ class DootApp:
             self.processes.append(process)
         except OSError as exc:
             self._append_output(f"Impossible de lancer doot : {exc}\n", "error")
+            if game_action:
+                self.game_pending = False
+                self.game_feedback.set(f"Impossible de lancer l'action : {exc}")
             return
 
-        threading.Thread(target=self._read_process, args=(process,), daemon=True).start()
+        threading.Thread(target=self._read_process, args=(process, game_action), daemon=True).start()
 
-    def _read_process(self, process: subprocess.Popen) -> None:
+    def _read_process(self, process: subprocess.Popen, game_action: bool = False) -> None:
         assert process.stdout is not None
         for line in process.stdout:
-            self.events.put(("line", line))
-        self.events.put(("done", process.wait()))
+            self.events.put(("game_line" if game_action else "line", line))
+        self.events.put(("game_done" if game_action else "done", process.wait()))
 
     def _drain_events(self) -> None:
         try:
             while True:
                 kind, value = self.events.get_nowait()
-                if kind == "line":
+                if kind in ("line", "game_line"):
                     self._append_output(value)
+                    if kind == "game_line" and value.strip():
+                        self.game_feedback.set(value.strip()[:180])
                 else:
                     tag = "success" if value == 0 else "error"
                     self._append_output(f"[termine avec le code {value}]\n", tag)
+                    if kind == "game_done":
+                        self.game_pending = False
+                        if value == 0:
+                            self.game_feedback.set("Decision enregistree. L'aventure a avance.")
+                        self._refresh_game()
                     self._refresh_achievements()
                     self._refresh_registre()
                     self._refresh_chronicles()

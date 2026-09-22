@@ -98,6 +98,13 @@ def start_ghost_train(state: dict, seed: str = "", route: str = "") -> dict:
         "station": 0, "integrity": 12, "coal": 11, "cargo": [], "history": [],
         "completed": False, "arrived": False,
     }
+    aftermath = state.get("after_dawn")
+    if isinstance(aftermath, dict):
+        voucher = aftermath.pop("rail_voucher", "")
+        if voucher == "coal":
+            _root(state)["train"]["coal"] += 3
+        elif voucher == "integrity":
+            _root(state)["train"]["integrity"] += 3
     _chronicle(state, "train", f"Depart de la ligne {route}.")
     return ghost_train_status(state)
 
