@@ -73,7 +73,8 @@ def _utc(now: datetime | None = None) -> datetime:
 
 
 def creer(source: str, now: datetime | None = None, token: str | None = None,
-          genre: str = "doot", nom: str = "") -> dict:
+          genre: str = "doot", nom: str = "", *, kind: str = "doot",
+          name: str = "", execute_at: datetime | None = None) -> dict:
     """Un signal, et ce qu'il porte quand ce n'est pas un doot ordinaire.
 
     Les deux clefs ne sont ecrites que si elles disent quelque chose : un doot
@@ -81,7 +82,8 @@ def creer(source: str, now: datetime | None = None, token: str | None = None,
     arriere le lit sans savoir qu'un format a bouge.
 
     Le genre et le nom s'ajoutent derriere `now` et `token`, que des appelants
-    passent deja par position.
+    passent deja par position. Une parade de flotte emploie en plus un type et
+    une heure de depart, sans changer le format des doots ordinaires.
     """
     maintenant = _utc(now)
     token = token or uuid.uuid4().hex[:12]
@@ -94,6 +96,10 @@ def creer(source: str, now: datetime | None = None, token: str | None = None,
     if genre in GENRES and genre != "doot" and nom:
         signal["genre"] = genre
         signal["nom"] = nom
+    if kind == "parade":
+        signal["kind"] = "parade"
+        signal["name"] = nom_sur(name)
+        signal["execute_at"] = _utc(execute_at or maintenant).isoformat(timespec="seconds")
     return signal
 
 
@@ -107,6 +113,18 @@ def valide(signal, now: datetime | None = None) -> bool:
         return False
     if len(identifiant) > 96 or len(source) > 64:
         return False
+    kind = signal.get("kind", "doot")
+    if kind not in ("doot", "parade"):
+        return False
+    if kind == "parade":
+        if not isinstance(signal.get("name"), str) or len(signal["name"]) > 64:
+            return False
+        try:
+            execute_at = datetime.fromisoformat(signal["execute_at"].replace("Z", "+00:00"))
+            if abs((_utc(execute_at) - _utc(datetime.fromisoformat(emis.replace("Z", "+00:00")))).total_seconds()) > TTL_SECONDS:
+                return False
+        except (KeyError, AttributeError, TypeError, ValueError, OverflowError):
+            return False
     try:
         instant = datetime.fromisoformat(emis.replace("Z", "+00:00"))
         age = (_utc(now) - _utc(instant)).total_seconds()

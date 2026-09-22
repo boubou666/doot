@@ -21,6 +21,14 @@ class CatalogueGraphique(unittest.TestCase):
             "--activate-profile", "--deactivate-profile", "--delete-profile",
             "--screens", "--regen-sound", "--version", "--help", "--gui",
             "--duel-board", "--duel-name", "--composer",
+            "--tray",
+            "--control", "--event-save", "--event-title", "--event-description",
+            "--history", "--challenge", "--content", "--favor-melody",
+            "--disable-melody", "--enable-melody", "--favor-event",
+            "--disable-event", "--enable-event",
+            "--pack-export", "--pack-import", "--fleet-parade", "--snooze",
+            "--resume", "--schedule-profile", "--schedule-window",
+            "--schedule-days", "--unschedule-profile",
         }
         self.assertEqual(options, attendues)
 

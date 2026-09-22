@@ -19,7 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from . import registre, season, succes
+from . import challenges, composer, history, registre, season, succes
 
 
 ASSETS_DIR = Path(__file__).with_name("assets")
@@ -148,6 +148,11 @@ COMMANDS: tuple[CommandSpec, ...] = (
         image="success/ca_tourne.png", detached=True,
     ),
     CommandSpec(
+        "tray", "Controle dans la barre systeme",
+        "Garde Doot, pause, profils et arret dans la zone de notification.",
+        ("--tray",), image="logo.png", detached=True,
+    ),
+    CommandSpec(
         "once", "Faire un doot maintenant",
         "Affiche une apparition tout de suite, puis quitte.",
         ("--once",), image="success/premier_doot.png",
@@ -190,6 +195,96 @@ COMMANDS: tuple[CommandSpec, ...] = (
             "--event", "Rencontre", "parade, pluie, vortex, duel, mimic ou faux-bug",
         ),),
         image="success/choregraphe.png",
+    ),
+    CommandSpec(
+        "event-save", "Creer une rencontre",
+        "Sauvegarde les reglages de salve comme rencontre personnelle.",
+        parameters=(
+            ParameterSpec("--event-save", "Nom", "bal-des-os"),
+            ParameterSpec("--event-title", "Titre", "Le bal des os", requis=False),
+            ParameterSpec("--event-description", "Description", "mise en scene", requis=False),
+        ), image="success/metteur_en_scene.png",
+    ),
+    CommandSpec(
+        "challenge", "Defi du jour",
+        "Affiche le contrat quotidien, sa progression et la serie en cours.",
+        ("--challenge",), image="success/defi_du_jour.png",
+    ),
+    CommandSpec(
+        "history", "Historique",
+        "Affiche les dernieres apparitions, melodies et rencontres.",
+        ("--history",),
+        image="success/sept_jours.png",
+    ),
+    CommandSpec(
+        "content", "Preferences de contenu",
+        "Liste les melodies et rencontres favorisees ou masquees.",
+        ("--content",), image="success/jukebox_macabre.png",
+    ),
+    CommandSpec(
+        "favor-melody", "Favoriser une melodie",
+        "Triple les chances de tirer une melodie precise.",
+        parameters=(ParameterSpec("--favor-melody", "Melodie", "nom"),),
+        image="success/maestro.png",
+    ),
+    CommandSpec(
+        "disable-melody", "Masquer une melodie",
+        "Retire une melodie du tirage automatique sans supprimer son fichier.",
+        parameters=(ParameterSpec("--disable-melody", "Melodie", "nom"),),
+        image="success/jukebox_macabre.png",
+    ),
+    CommandSpec(
+        "enable-melody", "Reactiver une melodie",
+        "Rend a une melodie son poids normal dans le tirage.",
+        parameters=(ParameterSpec("--enable-melody", "Melodie", "nom"),),
+        image="success/maestro.png",
+    ),
+    CommandSpec(
+        "favor-event", "Favoriser une rencontre",
+        "Triple les chances de tirer une rencontre precise.",
+        parameters=(ParameterSpec("--favor-event", "Rencontre", "nom"),),
+        image="success/collection_evenements.png",
+    ),
+    CommandSpec(
+        "disable-event", "Masquer une rencontre",
+        "Retire une rencontre du tirage automatique sans la supprimer.",
+        parameters=(ParameterSpec("--disable-event", "Rencontre", "nom"),),
+        image="success/collection_evenements.png",
+    ),
+    CommandSpec(
+        "enable-event", "Reactiver une rencontre",
+        "Rend a une rencontre son poids normal dans le tirage.",
+        parameters=(ParameterSpec("--enable-event", "Rencontre", "nom"),),
+        image="success/collection_evenements.png",
+    ),
+    CommandSpec(
+        "fleet-parade", "Parade de flotte",
+        "Lance la parade cinq secondes plus tard sur les machines partagees.",
+        ("--fleet-parade",), image="success/chef_de_flotte.png",
+    ),
+    CommandSpec(
+        "pack-export", "Exporter un pack",
+        "Emballe images, sons, melodies et rencontres personnelles.",
+        parameters=(ParameterSpec(
+            "--pack-export", "Nom ; destination", "Halloween; C:\\packs", True,
+        ),), image="success/couturier.png",
+    ),
+    CommandSpec(
+        "pack-import", "Importer un pack",
+        "Installe un pack sans ecraser les contenus deja presents.",
+        parameters=(ParameterSpec("--pack-import", "Fichier", "pack.dootpack.zip"),),
+        image="success/couturier.png",
+    ),
+    CommandSpec(
+        "snooze", "Endormir la crypte",
+        "Suspend les apparitions sans arreter le daemon.",
+        parameters=(ParameterSpec("--snooze", "Duree", "30m, 2h ou 1d"),),
+        image="success/ca_tourne.png",
+    ),
+    CommandSpec(
+        "resume", "Reveiller la crypte",
+        "Annule immediatement la mise en sommeil.",
+        ("--resume",), image="success/premier_doot.png",
     ),
     CommandSpec(
         "achievements", "Voir les succes",
@@ -258,6 +353,21 @@ COMMANDS: tuple[CommandSpec, ...] = (
         "delete-profile", "Supprimer un profil",
         "Supprime definitivement un profil persistant.",
         parameters=(ParameterSpec("--delete-profile", "Nom du profil", "profil a supprimer"),),
+        image="success/profil_actif.png",
+    ),
+    CommandSpec(
+        "schedule-profile", "Planifier un profil",
+        "Active automatiquement un profil certains jours et certaines heures.",
+        parameters=(
+            ParameterSpec("--schedule-profile", "Profil", "bureau"),
+            ParameterSpec("--schedule-window", "Plage", "09:00-18:00"),
+            ParameterSpec("--schedule-days", "Jours", "lun,mar,mer,jeu,ven", requis=False),
+        ), image="success/profil_actif.png",
+    ),
+    CommandSpec(
+        "unschedule-profile", "Deplanifier un profil",
+        "Retire l'horaire automatique sans supprimer le profil.",
+        parameters=(ParameterSpec("--unschedule-profile", "Profil", "bureau"),),
         image="success/profil_actif.png",
     ),
     CommandSpec(
@@ -341,6 +451,8 @@ COMMANDS: tuple[CommandSpec, ...] = (
 ONGLETS_ETAT = {
     "achievements": ("_refresh_achievements", "achievements_tab"),
     "stats": ("_refresh_registre", "registre_tab"),
+    "history": ("_refresh_chronicles", "chronicles_tab"),
+    "challenge": ("_refresh_chronicles", "chronicles_tab"),
 }
 
 
@@ -353,7 +465,7 @@ COMMAND_OPTIONS = {
     )
     if option.startswith("--")
 }
-COMMAND_OPTIONS.update({"--gui", "--help"})
+COMMAND_OPTIONS.update({"--gui", "--control", "--help"})
 
 
 def _long_option(action: argparse.Action) -> str | None:
@@ -597,6 +709,12 @@ class DootApp:
         self.processes: list[subprocess.Popen] = []
         self.wheel_canvases: list[object] = []
         self.wheel_bindings_installed = False
+        self.composer_score = composer.empty_score()
+        self.composer_voice = 0
+        self.composer_pattern = self.composer_score[0]
+        self.composer_clipboard: list | None = None
+        self.composer_cells: dict[tuple[int, str], object] = {}
+
         root.title("doot — grimoire de commandes")
         root.geometry("1180x860")
         root.minsize(940, 700)
@@ -783,18 +901,22 @@ class DootApp:
         options_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         achievements_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         registre_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
+        chronicles_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         output_tab = self.tk.Frame(notebook, bg="#0b0910")
         notebook.add(options_tab, text="  Reglages  ")
         notebook.add(achievements_tab, text="  Succes  ")
         notebook.add(registre_tab, text="  Registre  ")
+        notebook.add(chronicles_tab, text="  Chroniques  ")
         notebook.add(output_tab, text="  Sortie  ")
         self.notebook = notebook
         self.achievements_tab = achievements_tab
         self.registre_tab = registre_tab
+        self.chronicles_tab = chronicles_tab
         self.output_tab = output_tab
         self._build_settings(options_tab)
         self._build_achievements(achievements_tab)
         self._build_registre(registre_tab)
+        self._build_chronicles(chronicles_tab)
         self._build_output(output_tab)
 
         launch = self.tk.Frame(parent, bg=self.PANEL)
@@ -866,6 +988,253 @@ class DootApp:
                 fill="x", padx=16, pady=(2 if index < len(self.settings) - 1 else 12, 0),
             )
 
+    def _build_composer(self, parent) -> None:
+        """Grille a la Mario Paint : une hauteur possible par pas."""
+        toolbar = self.tk.Frame(parent, bg=self.PANEL_2)
+        toolbar.pack(fill="x", padx=14, pady=(12, 8))
+
+        self.composer_title = self.tk.StringVar(value="ma-melodie")
+        self.composer_tempo = self.tk.StringVar(value="120")
+        self.composer_octave = self.tk.StringVar(value="5")
+        self.composer_voice_label = self.tk.StringVar(value="Voix 1/1")
+        for label, variable, width in (
+            ("Nom", self.composer_title, 20),
+            ("BPM", self.composer_tempo, 7),
+        ):
+            self.tk.Label(
+                toolbar, text=label, bg=self.PANEL_2, fg=self.GOLD_LIGHT,
+                font=("Segoe UI", 9, "bold"),
+            ).pack(side="left", padx=(0, 5))
+            self.ttk.Entry(toolbar, textvariable=variable, width=width).pack(
+                side="left", padx=(0, 12),
+            )
+        self.tk.Label(
+            toolbar, text="Octave", bg=self.PANEL_2, fg=self.GOLD_LIGHT,
+            font=("Segoe UI", 9, "bold"),
+        ).pack(side="left", padx=(0, 5))
+        self.ttk.Combobox(
+            toolbar, textvariable=self.composer_octave,
+            values=tuple(str(value) for value in range(3, 8)),
+            state="readonly", width=4,
+        ).pack(side="left")
+        self.ttk.Button(
+            toolbar, text="Effacer", style="Clear.TButton",
+            command=self._composer_clear,
+        ).pack(side="right")
+        self.ttk.Button(
+            toolbar, text="− voix", style="Clear.TButton",
+            command=self._composer_remove_voice,
+        ).pack(side="right", padx=(4, 0))
+        self.ttk.Button(
+            toolbar, text="+ voix", style="Clear.TButton",
+            command=self._composer_add_voice,
+        ).pack(side="right", padx=(4, 0))
+        self.ttk.Button(
+            toolbar, text="Voix suivante", style="Clear.TButton",
+            command=self._composer_next_voice,
+        ).pack(side="right", padx=(4, 0))
+        self.ttk.Button(
+            toolbar, text="Charger", style="Clear.TButton",
+            command=self._composer_load,
+        ).pack(side="right", padx=(4, 0))
+        self.ttk.Button(
+            toolbar, text="Coller", style="Clear.TButton",
+            command=self._composer_paste_voice,
+        ).pack(side="right", padx=(4, 0))
+        self.ttk.Button(
+            toolbar, text="Copier", style="Clear.TButton",
+            command=self._composer_copy_voice,
+        ).pack(side="right", padx=(4, 0))
+        self.tk.Label(
+            toolbar, textvariable=self.composer_voice_label, bg=self.PANEL_2,
+            fg=self.GOLD, font=("Consolas", 9, "bold"),
+        ).pack(side="right", padx=(8, 4))
+
+        grid = self.tk.Frame(parent, bg=self.PANEL_2)
+        grid.pack(fill="both", expand=True, padx=14, pady=(0, 8))
+        self.tk.Label(
+            grid, text="NOTE", bg=self.PANEL_2, fg=self.MUTED,
+            font=("Consolas", 8, "bold"), width=6,
+        ).grid(row=0, column=0, padx=(0, 4), pady=(0, 3))
+        for step in range(composer.STEPS):
+            self.tk.Label(
+                grid, text=str(step + 1), bg=self.PANEL_2,
+                fg=self.GOLD if step % 4 == 0 else self.MUTED,
+                font=("Consolas", 8, "bold"), width=2,
+            ).grid(row=0, column=step + 1, padx=1, pady=(0, 3))
+
+        for row, (label, note) in enumerate(composer.PITCHES, 1):
+            self.tk.Label(
+                grid, text=label, bg=self.PANEL_2, fg=self.BONE,
+                font=("Consolas", 8, "bold"), width=6, anchor="e",
+            ).grid(row=row, column=0, padx=(0, 5), pady=1, sticky="e")
+            for step in range(composer.STEPS):
+                cell = self.tk.Button(
+                    grid, text="", width=2, height=1, bd=0,
+                    bg=self.CARD, activebackground=self.GOLD,
+                    fg="#fff8e8", activeforeground="#fff8e8",
+                    cursor="hand2",
+                    command=lambda s=step, n=note: self._composer_toggle(s, n),
+                )
+                cell.grid(row=row, column=step + 1, padx=1, pady=1, sticky="nsew")
+                cell.bind("<Button-3>", lambda _event, s=step: self._composer_duration(s))
+                self.composer_cells[(step, note)] = cell
+        for column in range(1, composer.STEPS + 1):
+            grid.grid_columnconfigure(column, weight=1)
+
+        footer = self.tk.Frame(parent, bg=self.PANEL_2)
+        footer.pack(fill="x", padx=14, pady=(0, 12))
+        self.composer_status = self.tk.StringVar(
+            value="Pose des notes sur les 16 pas, puis ecoute ou sauvegarde.",
+        )
+        self.tk.Label(
+            footer, textvariable=self.composer_status, bg=self.PANEL_2,
+            fg=self.MUTED, font=("Consolas", 8), anchor="w", justify="left",
+            wraplength=390,
+        ).pack(side="left", fill="x", expand=True)
+        self.ttk.Button(
+            footer, text="Sauvegarder", style="Clear.TButton",
+            command=self._composer_save,
+        ).pack(side="right", padx=(8, 0))
+        self.ttk.Button(
+            footer, text="ECOUTER  ›", style="Run.TButton",
+            command=self._composer_play,
+        ).pack(side="right")
+        for variable in (
+                self.composer_title, self.composer_tempo, self.composer_octave):
+            variable.trace_add("write", lambda *_args: self._composer_refresh())
+
+    def _composer_toggle(self, step: int, note: str) -> None:
+        composer.toggle(self.composer_pattern, step, note)
+        self._composer_refresh()
+
+    def _composer_duration(self, step: int) -> None:
+        current = self.composer_pattern[step]
+        if current is None:
+            return
+        units = current[1] if isinstance(current, tuple) else 1
+        composer.set_duration(self.composer_pattern, step, {1: 2, 2: 4, 4: 8, 8: 1}[units])
+        self._composer_refresh()
+
+    def _composer_select_voice(self, index: int) -> None:
+        self.composer_voice = max(0, min(index, len(self.composer_score) - 1))
+        self.composer_pattern = self.composer_score[self.composer_voice]
+        self.composer_voice_label.set(
+            f"Voix {self.composer_voice + 1}/{len(self.composer_score)}"
+        )
+        self._composer_refresh()
+
+    def _composer_next_voice(self) -> None:
+        self._composer_select_voice((self.composer_voice + 1) % len(self.composer_score))
+
+    def _composer_add_voice(self) -> None:
+        if len(self.composer_score) >= 8:
+            self.composer_status.set("Huit voix maximum.")
+            return
+        self.composer_score.append(composer.empty_pattern())
+        self._composer_select_voice(len(self.composer_score) - 1)
+
+    def _composer_remove_voice(self) -> None:
+        if len(self.composer_score) == 1:
+            self.composer_status.set("La partition doit garder une voix.")
+            return
+        del self.composer_score[self.composer_voice]
+        self._composer_select_voice(min(self.composer_voice, len(self.composer_score) - 1))
+
+    def _composer_copy_voice(self) -> None:
+        self.composer_clipboard = composer.copy_voice(self.composer_pattern)
+        self.composer_status.set(f"Voix {self.composer_voice + 1} copiee.")
+
+    def _composer_paste_voice(self) -> None:
+        if self.composer_clipboard is None:
+            self.composer_status.set("Copie d'abord une voix.")
+            return
+        self.composer_score[self.composer_voice] = composer.copy_voice(
+            self.composer_clipboard,
+        )
+        self.composer_pattern = self.composer_score[self.composer_voice]
+        self._composer_refresh()
+
+    def _composer_load(self) -> None:
+        from tkinter import filedialog
+
+        path = filedialog.askopenfilename(
+            title="Charger une melodie RTTTL",
+            filetypes=(("Sonneries RTTTL", "*.rtttl"), ("Tous les fichiers", "*.*")),
+        )
+        if not path:
+            return
+        try:
+            title, tempo, octave, voices = composer.load_score(Path(path))
+        except (ValueError, composer.ComposerError) as exc:
+            self.composer_status.set(f"Impossible de charger : {exc}")
+            return
+        self.composer_title.set(title)
+        self.composer_tempo.set(str(tempo))
+        self.composer_octave.set(str(octave))
+        self.composer_score = voices
+        self._composer_select_voice(0)
+
+    def _composer_refresh(self) -> None:
+        for (step, note), cell in self.composer_cells.items():
+            current = self.composer_pattern[step]
+            current_note = current[0] if isinstance(current, tuple) else current
+            units = current[1] if isinstance(current, tuple) else 1
+            selected = current_note == note
+            cell.configure(
+                text=("♪" + (str(units) if units > 1 else "")) if selected else "",
+                bg=self.EMBER if selected else self.CARD,
+            )
+        try:
+            text = composer.rtttl_score(
+                self.composer_title.get(), int(self.composer_tempo.get()),
+                int(self.composer_octave.get()), self.composer_score,
+            )
+            self.composer_status.set(text.strip())
+        except (ValueError, composer.ComposerError) as exc:
+            self.composer_status.set(str(exc))
+
+    def _composer_clear(self) -> None:
+        self.composer_score[self.composer_voice] = composer.empty_pattern()
+        self.composer_pattern = self.composer_score[self.composer_voice]
+        self._composer_refresh()
+
+    def _composer_values(self) -> tuple[str, int, int]:
+        try:
+            return (
+                self.composer_title.get(), int(self.composer_tempo.get()),
+                int(self.composer_octave.get()),
+            )
+        except ValueError as exc:
+            raise composer.ComposerError("le tempo et l'octave doivent etre des nombres") from exc
+
+    def _composer_save(self) -> None:
+        from . import cli
+
+        try:
+            title, tempo, octave = self._composer_values()
+            path = composer.save_score(
+                cli.paths()["melodies"], title, tempo, octave, self.composer_score,
+            )
+        except (OSError, composer.ComposerError) as exc:
+            self.composer_status.set(f"Impossible de sauvegarder : {exc}")
+            return
+        self.composer_status.set(f"Sauvegardee : {path}")
+
+    def _composer_play(self) -> None:
+        from . import cli
+
+        try:
+            title, tempo, octave = self._composer_values()
+            path = composer.write_score(
+                cli.paths()["data"] / "composer-preview.rtttl",
+                title, tempo, octave, self.composer_score,
+            )
+        except (OSError, composer.ComposerError) as exc:
+            self.composer_status.set(f"Impossible de jouer : {exc}")
+            return
+        self._launch_argv(["--play", str(path), "--ignore-season"])
+
     def _build_achievements(self, parent) -> None:
         toolbar = self.tk.Frame(parent, bg=self.PANEL_2)
         toolbar.pack(fill="x", padx=16, pady=(12, 8))
@@ -905,6 +1274,57 @@ class DootApp:
         self.achievement_widgets: list[object] = []
         self.achievement_columns = 0
         self._refresh_achievements()
+
+    def _build_chronicles(self, parent) -> None:
+        toolbar = self.tk.Frame(parent, bg=self.PANEL_2)
+        toolbar.pack(fill="x", padx=16, pady=(12, 8))
+        self.chronicle_summary = self.tk.StringVar(value="Chargement des chroniques...")
+        self.tk.Label(
+            toolbar, textvariable=self.chronicle_summary, bg=self.PANEL_2,
+            fg=self.GOLD_LIGHT, font=("Georgia", 12, "bold"), anchor="w",
+        ).pack(side="left", fill="x", expand=True)
+        self.ttk.Button(
+            toolbar, text="Actualiser", style="Clear.TButton",
+            command=self._refresh_chronicles,
+        ).pack(side="right")
+        self.chronicle_text = self.tk.Text(
+            parent, bg="#0b0910", fg=self.BONE, relief="flat", bd=0,
+            font=("Consolas", 9), wrap="word", padx=14, pady=12,
+        )
+        self.chronicle_text.pack(fill="both", expand=True, padx=14, pady=(0, 12))
+        self.chronicle_text.configure(state="disabled")
+        self._refresh_chronicles()
+
+    def _refresh_chronicles(self) -> None:
+        from . import cli
+
+        state = cli.read_state()
+        challenge = challenges.daily()
+        progress = challenges.status(state)
+        entries = history.read(cli.data_path("history", "history.jsonl"), 100)
+        counts = {}
+        for entry in entries:
+            counts[entry["kind"]] = counts.get(entry["kind"], 0) + 1
+        marker = "TERMINE" if progress["completed"] else f"{progress['progress']}/{challenge.target}"
+        self.chronicle_summary.set(
+            f"Defi : {challenge.title} — {marker}  ·  serie {state.get('challenge_streak', 0)} jour(s)"
+        )
+        lines = ["STATISTIQUES DES 100 DERNIERES ENTREES"]
+        lines.extend(f"  {kind:<18} {count:>4}" for kind, count in sorted(counts.items()))
+        lines.append("\nCHRONOLOGIE")
+        for entry in reversed(entries):
+            details = ", ".join(
+                f"{key}={value}" for key, value in entry.items()
+                if key not in ("at", "kind") and value not in ("", None)
+            )
+            lines.append(f"  {entry.get('at', '?')}  {entry['kind']}" +
+                         (f" — {details}" if details else ""))
+        if not entries:
+            lines.append("  Aucune apparition enregistree.")
+        self.chronicle_text.configure(state="normal")
+        self.chronicle_text.delete("1.0", "end")
+        self.chronicle_text.insert("end", "\n".join(lines))
+        self.chronicle_text.configure(state="disabled")
 
     def _refresh_achievements(self) -> None:
         """Relit l'etat et redessine les cartes, succes acquis en premier."""
@@ -1369,13 +1789,59 @@ class DootApp:
                     self._append_output(f"[termine avec le code {value}]\n", tag)
                     self._refresh_achievements()
                     self._refresh_registre()
+                    self._refresh_chronicles()
         except queue.Empty:
             pass
         self.processes[:] = [process for process in self.processes if process.poll() is None]
         self.root.after(80, self._drain_events)
 
 
-def main() -> int:
+def _compact_controller(root, tk) -> None:
+    """Petit panneau toujours disponible, sans dependance de zone systeme."""
+
+    root.title("doot — controle rapide")
+    root.geometry("360x250")
+    root.resizable(False, False)
+    root.configure(bg=DootApp.BG)
+    status = tk.StringVar(value="La crypte attend tes ordres.")
+
+    def launch(*argv):
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
+        try:
+            subprocess.Popen(
+                [sys.executable, "-m", "doot", *argv], stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=flags, start_new_session=os.name != "nt",
+            )
+            status.set("Commande envoyee : " + " ".join(argv))
+        except OSError as exc:
+            status.set(f"Impossible : {exc}")
+
+    tk.Label(root, text="☠  CONTROLE DE LA CRYPTE  🎺", bg=DootApp.BG,
+             fg=DootApp.GOLD, font=("Georgia", 14, "bold")).pack(pady=(18, 12))
+    buttons = tk.Frame(root, bg=DootApp.BG)
+    buttons.pack(fill="x", padx=18)
+    for index, (text_value, argv) in enumerate((
+        ("DOOT maintenant", ("--once", "--ignore-season")),
+        ("Pause 30 min", ("--snooze", "30m")),
+        ("Pause 2 h", ("--snooze", "2h")),
+        ("Reveiller", ("--resume",)),
+        ("Ouvrir le grimoire", ("--gui",)),
+        ("Arreter le daemon", ("--stop",)),
+    )):
+        button = tk.Button(
+            buttons, text=text_value, command=lambda a=argv: launch(*a),
+            bg=DootApp.CARD, fg=DootApp.BONE, activebackground=DootApp.CARD_ACTIVE,
+            activeforeground=DootApp.GOLD_LIGHT, bd=0, padx=8, pady=9,
+        )
+        button.grid(row=index // 2, column=index % 2, sticky="ew", padx=3, pady=3)
+    buttons.grid_columnconfigure(0, weight=1)
+    buttons.grid_columnconfigure(1, weight=1)
+    tk.Label(root, textvariable=status, bg=DootApp.BG, fg=DootApp.MUTED,
+             wraplength=320, font=("Consolas", 8)).pack(pady=12)
+
+
+def main(compact: bool = False) -> int:
     """Ouvre le lanceur ; renvoie 4 quand Tkinter ou l'affichage manque."""
 
     try:
@@ -1388,7 +1854,10 @@ def main() -> int:
     except tk.TclError as exc:
         print(f"doot : impossible d'ouvrir la GUI : {exc}", file=sys.stderr)
         return 4
-    DootApp(root)
+    if compact:
+        _compact_controller(root, tk)
+    else:
+        DootApp(root)
     root.mainloop()
     return 0
 

@@ -31,7 +31,10 @@ class ComposerApp:
         self.filedialog = filedialog
         self.messagebox = messagebox
         self.root = root
-        self.pattern = composer.empty_pattern()
+        self.score = composer.empty_score()
+        self.voice = 0
+        self.pattern = self.score[0]
+        self.clipboard: list | None = None
         self.cells: dict[tuple[int, str], object] = {}
         self.grid_mode = True
         self.current_path: Path | None = None
@@ -89,7 +92,7 @@ class ComposerApp:
         ).pack(fill="x", pady=(4, 3))
         self.tk.Label(
             header,
-            text="La grille couvre 16 doubles-croches ; le mode source conserve les partitions avancées.",
+            text="Jusqu’à 8 voix et des notes de 1, 2, 4 ou 8 pas ; clic droit pour changer la durée.",
             bg=self.BG, fg=self.MUTED, font=("Segoe UI", 10), anchor="w",
         ).pack(fill="x")
 
@@ -135,6 +138,19 @@ class ComposerApp:
             values=tuple(str(value) for value in range(1, 9)),
             state="readonly", width=4,
         ).pack(side="left")
+        self.voice_label = self.tk.StringVar(value="Voix 1/1")
+        self.tk.Label(
+            metadata, textvariable=self.voice_label, bg=self.PANEL_2,
+            fg=self.GOLD_LIGHT, font=("Segoe UI", 9, "bold"),
+        ).pack(side="left", padx=(16, 7))
+        for text, command in (
+            ("−", self._remove_voice), ("+", self._add_voice),
+            ("Suivante", self._next_voice), ("Copier", self._copy_voice),
+            ("Coller", self._paste_voice),
+        ):
+            self.ttk.Button(
+                metadata, text=text, style="Editor.TButton", command=command,
+            ).pack(side="left", padx=2)
         for variable in (self.title, self.tempo, self.octave):
             variable.trace_add("write", self._metadata_changed)
 
@@ -186,6 +202,8 @@ class ComposerApp:
                     command=lambda s=step, n=note: self._toggle(s, n),
                 )
                 cell.grid(row=row, column=step + 1, padx=1, pady=1, sticky="nsew")
+                cell.bind("<Button-3>", lambda _event, s=step, n=note:
+                          self._cycle_duration(s, n))
                 self.cells[(step, note)] = cell
         for column in range(1, composer.STEPS + 1):
             parent.grid_columnconfigure(column, weight=1)
@@ -219,16 +237,64 @@ class ComposerApp:
         composer.toggle(self.pattern, step, note)
         self._refresh_grid()
 
+    def _select_voice(self, index: int) -> None:
+        self.voice = max(0, min(index, len(self.score) - 1))
+        self.pattern = self.score[self.voice]
+        self.voice_label.set(f"Voix {self.voice + 1}/{len(self.score)}")
+        self._refresh_grid()
+
+    def _next_voice(self) -> None:
+        self._select_voice((self.voice + 1) % len(self.score))
+
+    def _add_voice(self) -> None:
+        if len(self.score) >= 8:
+            self.status.set("Huit voix maximum.")
+            return
+        self.score.append(composer.empty_pattern())
+        self._select_voice(len(self.score) - 1)
+
+    def _remove_voice(self) -> None:
+        if len(self.score) == 1:
+            self.status.set("La partition doit garder une voix.")
+            return
+        del self.score[self.voice]
+        self._select_voice(min(self.voice, len(self.score) - 1))
+
+    def _copy_voice(self) -> None:
+        self.clipboard = composer.copy_voice(self.pattern)
+        self.status.set(f"Voix {self.voice + 1} copiée.")
+
+    def _paste_voice(self) -> None:
+        if self.clipboard is None:
+            self.status.set("Copie d’abord une voix.")
+            return
+        self.score[self.voice] = composer.copy_voice(self.clipboard)
+        self.pattern = self.score[self.voice]
+        self._refresh_grid()
+
+    def _cycle_duration(self, step: int, note: str) -> None:
+        if not self.grid_mode:
+            return
+        current = self.pattern[step]
+        current_note, units = (current if isinstance(current, tuple) else (current, 1))
+        if current_note != note:
+            composer.toggle(self.pattern, step, note)
+            units = 1
+        composer.set_duration(self.pattern, step, {1: 2, 2: 4, 4: 8, 8: 1}[units])
+        self._refresh_grid()
+
     def _refresh_grid(self) -> None:
         for (step, note), cell in self.cells.items():
-            selected = self.pattern[step] == note
-            cell.configure(text="♪" if selected else "",
+            current = self.pattern[step]
+            current_note, units = (current if isinstance(current, tuple) else (current, 1))
+            selected = current_note == note
+            cell.configure(text=("♪" if units == 1 else str(units)) if selected else "",
                            bg=self.EMBER if selected else self.CARD)
         if self._loading or not self.grid_mode:
             return
         try:
             title, tempo, octave = self._values()
-            text = composer.rtttl(title, tempo, octave, self.pattern)
+            text = composer.rtttl_score(title, tempo, octave, self.score)
         except composer.ComposerError as exc:
             self._set_source("")
             self.status.set(str(exc))
@@ -283,12 +349,20 @@ class ComposerApp:
         )
 
     def _load_draft(self, draft: composer.Draft) -> None:
+        self._load_score(draft.title, draft.tempo, draft.octave,
+                         [list(draft.pattern)])
+
+    def _load_score(self, title: str, tempo: int, octave: int,
+                    score: list[list]) -> None:
         self._loading = True
         try:
-            self.title.set(draft.title)
-            self.tempo.set(str(draft.tempo))
-            self.octave.set(str(draft.octave))
-            self.pattern[:] = list(draft.pattern)
+            self.title.set(title)
+            self.tempo.set(str(tempo))
+            self.octave.set(str(octave))
+            self.score = score
+            self.voice = 0
+            self.pattern = self.score[0]
+            self.voice_label.set(f"Voix 1/{len(self.score)}")
             self._set_grid_mode(True)
         finally:
             self._loading = False
@@ -296,11 +370,11 @@ class ComposerApp:
 
     def _source_to_grid(self) -> None:
         try:
-            draft = composer.import_grid(self._source_text())
+            title, tempo, octave, score = composer.parse_score(self._source_text())
         except composer.ComposerError as exc:
             self.status.set(f"Conversion impossible : {exc}")
             return
-        self._load_draft(draft)
+        self._load_score(title, tempo, octave, score)
         self.status.set("Source chargée dans la grille.")
 
     def _new(self) -> None:
@@ -310,7 +384,10 @@ class ComposerApp:
             self.title.set("ma-melodie")
             self.tempo.set("120")
             self.octave.set("5")
-            self.pattern[:] = composer.empty_pattern()
+            self.score = composer.empty_score()
+            self.voice = 0
+            self.pattern = self.score[0]
+            self.voice_label.set("Voix 1/1")
             self._set_grid_mode(True)
             self._set_source("")
         finally:
@@ -335,19 +412,11 @@ class ComposerApp:
         self._set_source(text)
         self._set_grid_mode(False)
         try:
-            draft = composer.import_grid(text)
+            title, tempo, octave, score = composer.parse_score(text)
         except composer.ComposerError:
             detail = f"{len(morceau.voices)} voix — édition fidèle dans la source."
         else:
-            self._loading = True
-            try:
-                self.title.set(draft.title)
-                self.tempo.set(str(draft.tempo))
-                self.octave.set(str(draft.octave))
-                self.pattern[:] = list(draft.pattern)
-            finally:
-                self._loading = False
-            self._refresh_grid()
+            self._load_score(title, tempo, octave, score)
             detail = "compatible avec la grille — conversion disponible."
         self.status.set(f"Importée : {source_path.name} · {detail}")
         self._schedule_preview()

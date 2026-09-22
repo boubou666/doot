@@ -186,6 +186,15 @@ else
     say "              $PYTHON -m pip install --target $APP_DIR 'cryptography>=42'"
 fi
 
+# Le controle en zone de notification est un confort optionnel. Si le backend
+# ne peut pas etre installe, `doot --tray` se replie sur le panneau Tk compact.
+if "$PYTHON" -m pip install --quiet --disable-pip-version-check \
+        --target "$APP_DIR" "pystray>=0.19.5" "Pillow>=10" >/dev/null 2>&1; then
+    say "barre systeme : pystray"
+else
+    say "barre systeme : panneau compact (pystray indisponible)"
+fi
+
 cat > "$BIN_DIR/doot" <<EOF
 #!/usr/bin/env bash
 # Lanceur genere par install.sh
