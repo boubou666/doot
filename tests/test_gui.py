@@ -47,6 +47,13 @@ class CatalogueGraphique(unittest.TestCase):
             "--character-costume", "--character-instrument", "--character-voice",
             "--character-line", "--character-pack", "--radio", "--coop",
             "--night-infinite",
+            "--city", "--relics", "--factions", "--faction-mission",
+            "--nemesis", "--investigation", "--investigate", "--ghost-export",
+            "--ghost-time", "--ghost-race", "--adaptive-score", "--score-danger",
+            "--score-combo", "--director", "--photo-booth", "--photo-pose",
+            "--remote", "--remote-serve", "--remote-host", "--remote-port", "--workshop-validate",
+            "--night-calendar", "--glyphs", "--glyph-decode",
+            "--story-constellation", "--mirror-boss",
             "--accessibility",
         }
         self.assertEqual(options, attendues)

@@ -170,6 +170,17 @@ class EspecesDeStatistiques(unittest.TestCase):
         succes.enregistrer(etat, "new_game_plus", level=1)
         succes.enregistrer(etat, "coop", score=4)
         succes.enregistrer(etat, "nuit_infinie", completed=True)
+        succes.enregistrer(etat, "city", level=1)
+        succes.enregistrer(etat, "relic_build", equipped=1)
+        succes.enregistrer(etat, "faction", reputation=2)
+        succes.enregistrer(etat, "nemesis", defeated=True)
+        succes.enregistrer(etat, "investigation", solved=True)
+        succes.enregistrer(etat, "ghost_race", won=True)
+        succes.enregistrer(etat, "adaptive_score", intensity=.7)
+        succes.enregistrer(etat, "director", exported=True)
+        succes.enregistrer(etat, "workshop", valid=True)
+        succes.enregistrer(etat, "mirror_boss", generated=True)
+        succes.enregistrer(etat, "glyphs", completed=True)
         return set(etat["stats"])
 
     def test_la_table_couvre_ce_qui_est_ecrit(self):

@@ -466,13 +466,60 @@ n'est requis. Le Studio de personnages exporte des packs, Doot DJ conserve les
 points de découpe du WAV et la Radio Crypte génère la même programmation pour
 une même graine.
 
+## 🏰 La Cité des Os
+
+La quatrième vague fait de la crypte un quartier général persistant. Les
+missions de faction rapportent réputation et os, les bâtiments atteignent cinq
+niveaux, et trois reliques équipées composent un build qui suit le joueur dans
+les modes roguelite. La Némésis garde ses cicatrices, change de faiblesse et
+revient plus solide après chaque défaite.
+
+```bash
+doot --city                            # état de la cité
+doot --city atelier                    # développe un bâtiment
+doot --relics metronome_fendu          # équipe ou retire une relique
+doot --factions airain                 # prête serment
+doot --faction-mission nuit-rouge
+doot --nemesis                         # rival, faiblesse et cicatrices
+doot --nemesis vortex                  # l'affronte avec une formation
+```
+
+Enquêtes et courses fantômes sont partageables sans serveur. Le fichier
+`.dootghost` porte une empreinte vérifiée avant la course ; l'Atelier refuse
+les chemins traversants, les archives trop grosses et les manifestes inconnus.
+
+```bash
+doot --investigation loge-13
+doot --investigate chercher
+doot --investigate "accuser:la cantatrice muette"
+doot --ghost-export ./course.dootghost --ghost-time 58420
+doot --ghost-race ./course.dootghost 57110
+doot --workshop-validate ./pack.dootpack
+```
+
+Les outils créatifs restent autonomes : la partition adaptative dose quatre
+stems, le réalisateur exporte un mini-film HTML, le photomaton fabrique son
+portrait sans capturer le bureau, et la télécommande sert quatre actions sur le
+réseau local derrière un jeton éphémère et une carte QR.
+
+```bash
+doot --adaptive-score --score-danger 8 --score-combo 12 --score-boss
+doot --director ./director.html
+doot --photo-booth ./portraits --photo-pose fanfare
+doot --remote-serve ./remote.html --remote-host 192.168.1.20
+doot --night-calendar 14
+doot --story-constellation ./legende.html
+doot --mirror-boss
+doot --glyphs                         # langue ancienne, succès secret inclus
+```
+
 ## 🏆 Les succès
 
 Doot garde sa progression **uniquement en local**, dans le même `state.json` que
 le compteur de mélodies (`doot --paths` montre son emplacement). Aucun compte,
 aucune connexion et aucune télémétrie : les apparitions, les salves, les mélodies,
 les bords imposés, les formations, les événements et les profils débloquent
-40 succès pour un total de 1 205 points.
+51 succès pour un total de 1 545 points.
 
 ```bash
 doot --achievements     # alias français : doot --succes
