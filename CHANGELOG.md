@@ -12,6 +12,26 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.27.0] - 2026-09-22
+
+### Ajouté
+- Les expéditions roguelite proposent sept salles déterministes, des choix de
+  risque, des reliques et un gardien final ; la Nuit infinie relie six actes,
+  l'ambiance, l'expédition et la progression saisonnière.
+- Le boss saisonnier gagne trois phases, des attaques annoncées et des contres
+  rythmiques par formation. Les familiers spectraux évoluent selon l'activité.
+- Un éditeur HTML autonome fabrique des campagnes à choix et les exporte en
+  packs ; une constellation interactive cartographie les succès publics et
+  secrets.
+- Les contrats de flotte s'échangent en capsules chiffrées authentifiées. Doot
+  DJ découpe les WAV en pads, Radio Crypte programme la journée et la coop
+  locale alterne musique et mise en scène.
+- Les replays peuvent sortir en GIF animé sans outil externe. Le mode ambiance,
+  la chasse aux cinq codes, Nouvelle Partie + et le Studio de personnages
+  rejoignent la CLI et le grimoire graphique.
+- Huit succès illustrés portent le cabinet à 40 médailles et 1 205 points ;
+  chaque nouvelle médaille possède une illustration originale 256×256.
+
 ## [1.26.0] - 2026-09-22
 
 ### Ajouté
@@ -813,7 +833,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.26.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.27.0...HEAD
+[1.27.0]: https://github.com/boubou666/doot/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/boubou666/doot/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/boubou666/doot/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/boubou666/doot/compare/v1.23.0...v1.24.0

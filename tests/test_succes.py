@@ -162,6 +162,14 @@ class EspecesDeStatistiques(unittest.TestCase):
         succes.enregistrer(etat, "studio_live")
         succes.enregistrer(etat, "musee", year=2025)
         succes.enregistrer(etat, "enigme", nom="douzieme_coup")
+        succes.enregistrer(etat, "expedition", completed=True)
+        succes.enregistrer(etat, "familiar", level=2)
+        succes.enregistrer(etat, "contract", completed=True)
+        succes.enregistrer(etat, "dj", imported=True)
+        succes.enregistrer(etat, "code_hunt", completed=True)
+        succes.enregistrer(etat, "new_game_plus", level=1)
+        succes.enregistrer(etat, "coop", score=4)
+        succes.enregistrer(etat, "nuit_infinie", completed=True)
         return set(etat["stats"])
 
     def test_la_table_couvre_ce_qui_est_ecrit(self):

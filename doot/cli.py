@@ -19,6 +19,7 @@ from . import (
     __version__, adventure, art, carte, challenges, choreography, coffre, codex,
     contagion, content, duel, history, image, notification, packs, partage,
     procedural, profiles, registre, replay, rituals, schedule, season, sound, succes,
+    wave3,
 )
 
 DEFAULT_MIN_SECONDS = 600     # 10 min
@@ -69,6 +70,8 @@ def paths() -> dict[str, Path]:
         "choreographies": root / "choreographies",
         "packs": root / "packs",
         "replays": root / "replays",
+        "dj": root / "dj",
+        "characters": root / "characters",
     }
 
 
@@ -951,17 +954,23 @@ def do_boss(args) -> int:
     boss = adventure.seasonal_boss(state)
     write_state(state)
     bar = "#" * round(20 * (boss["max_hp"] - boss["hp"]) / boss["max_hp"])
+    phase = wave3.boss_phase(boss)
     print(f"Boss saisonnier : {boss['name']}")
     print(f"  [{bar:<20}] {boss['hp']}/{boss['max_hp']} PV")
-    print("  doot --boss-hit N pour transformer une salve en degats")
+    print(f"  phase {phase['number']} — {phase['name']}")
+    print(f"  attaque annoncee : {phase['attack']} — contre rythmique : {phase['counter']}")
+    print("  doot --boss-hit N --formation CONTRE pour doubler les degats")
     return 0
 
 
 def do_boss_hit(args, damage: int) -> int:
     state = read_state()
     before = adventure.seasonal_boss(state)
+    phase_before = wave3.boss_phase(before)
+    countered = args.formation == phase_before["counter"]
+    dealt = damage * 2 if countered else damage
     try:
-        boss = adventure.hit_boss(state, damage)
+        boss = adventure.hit_boss(state, dealt)
     except ValueError as exc:
         print(f"doot : {exc}")
         return 2
@@ -970,7 +979,12 @@ def do_boss_hit(args, damage: int) -> int:
         note_succes(args, "boss", defeated=True)
         print(f"DOOT FINAL ! {boss['name']} est vaincu.")
     else:
-        print(f"doot : {min(50, damage)} degats — {boss['hp']}/{boss['max_hp']} PV")
+        counter = " — CONTRE PARFAIT x2" if countered else ""
+        phase_after = wave3.boss_phase(boss)
+        change = (f" — transformation : {phase_after['name']}"
+                  if phase_after["number"] != phase_before["number"] else "")
+        print(f"doot : {min(50, dealt)} degats{counter}{change} — "
+              f"{boss['hp']}/{boss['max_hp']} PV")
     return 0
 
 
@@ -1196,6 +1210,319 @@ def do_accessibility(args) -> int:
     print(f"  flashs reduits     : {'oui' if args.no_flash else 'non'}")
     print(f"  contraste renforce : {'oui' if args.high_contrast else 'non'}")
     print(f"  limite sonore      : {args.sound_limit:.0%}")
+    return 0
+
+
+# --------------------------------------------------------------- vague 3 -----
+
+def _print_expedition(status: dict) -> None:
+    if not status.get("active") and "seed" not in status:
+        print("Expedition : aucune route active. Lance : doot --expedition GRAINE")
+        return
+    print(f"Expedition {status['seed']} — salle {min(status['room'] + 1, len(status['rooms']))}/"
+          f"{len(status['rooms'])} — {status['hp']} PV — {len(status['relics'])} relique(s)")
+    if status.get("completed"):
+        print("  VICTOIRE — la clef astrale est a toi." if status.get("won")
+              else "  DEFAITE — la crypte referme la route.")
+        return
+    room = status["current"]
+    print(f"\n{room['title']}  [danger {room['danger']}]\n  {room['text']}")
+    print("  doot --expedition-choose prudence|audace")
+
+
+def do_expedition(args, seed: str) -> int:
+    state = read_state()
+    current = wave3.expedition_status(state)
+    if seed or not current.get("active"):
+        current = wave3.start_expedition(state, seed)
+        write_state(state)
+    _print_expedition(current)
+    return 0
+
+
+def do_expedition_choose(args, choice: str) -> int:
+    state = read_state()
+    before = wave3.expedition_status(state)
+    try:
+        status = wave3.choose_expedition(state, choice)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if status.get("won") and not before.get("won"):
+        note_succes(args, "expedition", completed=True)
+    _print_expedition(status)
+    return 0
+
+
+def do_campaign_editor(args, destination: str) -> int:
+    try:
+        path = wave3.campaign_editor(Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : editeur impossible : {exc}")
+        return 2
+    print(f"doot : editeur visuel de campagne -> {path}")
+    return 0
+
+
+def do_campaign_pack(args, source: str, destination: str) -> int:
+    try:
+        path = wave3.campaign_pack(Path(source).expanduser(), Path(destination).expanduser())
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"doot : pack de campagne impossible : {exc}")
+        return 2
+    print(f"doot : campagne emballee -> {path}")
+    return 0
+
+
+def do_constellation(args, destination: str) -> int:
+    try:
+        path = wave3.constellation(read_state(), succes.CATALOGUE,
+                                   Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : constellation impossible : {exc}")
+        return 2
+    print(f"doot : constellation interactive -> {path}")
+    return 0
+
+
+def do_familiars(args) -> int:
+    state = read_state()
+    current = wave3.familiar_status(state)
+    write_state(state)
+    print("Familiers spectraux :")
+    for item in wave3.FAMILIARS:
+        marker = "*" if item.identifiant == current["id"] else " "
+        print(f" {marker} {item.identifiant:<16} {item.name} — {item.talent}")
+    print(f"Lien actuel : niveau {current['level']} ({current['bond']} activite(s))")
+    return 0
+
+
+def do_familiar(args, wanted: str) -> int:
+    state = read_state()
+    try:
+        item = wave3.set_familiar(state, wanted)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    print(f"doot : {item['name']} t'accompagne — {item['talent']}.")
+    return 0
+
+
+def do_familiar_bond(args, activity: str) -> int:
+    state = read_state()
+    before = wave3.familiar_status(state)
+    try:
+        item = wave3.bond_familiar(state, activity)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["level"] >= 2 and before["level"] < 2:
+        note_succes(args, "familiar", level=item["level"])
+    print(f"doot : lien avec {item['name']} — niveau {item['level']} ({item['bond']}).")
+    return 0
+
+
+def _print_contract(item: dict) -> None:
+    print(f"Contrat de flotte : {item['title']}")
+    print(f"  progression : {item['progress']}/{item['target']} — "
+          f"{len(item['contributors'])} contributeur(s)")
+    print("  TERMINE — pacte honore." if item["completed"] else
+          "  Partage : --contract-share FICHIER, puis --contract-join FICHIER")
+
+
+def do_contract(args) -> int:
+    state = read_state()
+    item = wave3.contract_status(state)
+    write_state(state)
+    _print_contract(item)
+    return 0
+
+
+def do_contract_add(args, amount: int) -> int:
+    state = read_state()
+    before = wave3.contract_status(state)
+    try:
+        item = wave3.add_contract_progress(state, amount, partage.identite(paths()["data"]))
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["completed"] and not before["completed"]:
+        note_succes(args, "contract", completed=True)
+    _print_contract(item)
+    return 0
+
+
+def do_contract_share(args, destination: str) -> int:
+    try:
+        path = wave3.contract_capsule(read_state(), Path(destination).expanduser())
+    except (OSError, ValueError) as exc:
+        print(f"doot : partage du contrat impossible : {exc}")
+        return 2
+    print(f"doot : capsule de contrat chiffree -> {path}")
+    return 0
+
+
+def do_contract_join(args, source: str) -> int:
+    state = read_state()
+    before = wave3.contract_status(state)
+    try:
+        item = wave3.join_contract(state, Path(source).expanduser())
+    except (OSError, ValueError) as exc:
+        print(f"doot : capsule illisible : {exc}")
+        return 2
+    write_state(state)
+    if item["completed"] and not before["completed"]:
+        note_succes(args, "contract", completed=True)
+    _print_contract(item)
+    return 0
+
+
+def do_dj_import(args, source: str) -> int:
+    try:
+        path = wave3.dj_import(Path(source).expanduser(), data_path("dj", "dj"), args.dj_slices)
+    except (OSError, ValueError) as exc:
+        print(f"doot : import DJ impossible : {exc}")
+        return 2
+    note_succes(args, "dj", imported=True)
+    print(f"doot : sample decoupe en {args.dj_slices} pads -> {path}")
+    return 0
+
+
+def do_ambient_mode(args, preset: str) -> int:
+    state = read_state()
+    try:
+        item = wave3.ambience(state, None if preset == "status" else preset)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    print(f"Ambiance de crypte : {item['preset']} — brume {item['fog']:.0%}, "
+          f"pluie {item['rain']:.0%}, lune {item['moon']:.0%}, "
+          f"silhouettes {item['silhouettes']}, OLED {'oui' if item['oled'] else 'non'}")
+    return 0
+
+
+def do_replay_gif(args, destination: str) -> int:
+    entries = history.read(data_path("history", "history.jsonl"), 50)
+    try:
+        path = wave3.replay_gif(entries, Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : GIF impossible : {exc}")
+        return 2
+    print(f"doot : replay GIF -> {path}")
+    return 0
+
+
+def do_code_hunt(args) -> int:
+    entries = wave3.hunt_status(read_state())
+    print(f"Chasse aux codes ({sum(item['found'] for item in entries)}/{len(entries)}) :")
+    for item in entries:
+        print(f"  [{'TROUVE' if item['found'] else '....'}] {item['code']} — {item['hint']}")
+    return 0
+
+
+def do_code_submit(args, code: str) -> int:
+    state = read_state()
+    try:
+        result = wave3.submit_code(state, code)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if result["completed"] and result["fresh"]:
+        note_succes(args, "code_hunt", completed=True)
+    print(f"doot : code {result['code']} {'decouvert' if result['fresh'] else 'deja grave'}.")
+    return 0
+
+
+def do_new_game_plus(args) -> int:
+    state = read_state()
+    try:
+        level = wave3.new_game_plus(state)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    note_succes(args, "new_game_plus", level=level)
+    print(f"doot : Nouvelle Partie +{level}. La crypte se souvient de tout, sauf du chemin.")
+    return 0
+
+
+def _character_path(wanted: str) -> Path:
+    candidate = Path(wanted).expanduser()
+    if candidate.is_file():
+        return candidate
+    entries = wave3.characters(data_path("characters", "characters"))
+    found = next((item for item in entries if item.get("name", "").casefold() == wanted.casefold()), None)
+    return Path(found["path"]) if found else candidate
+
+
+def do_character(args, name: str) -> int:
+    try:
+        path = wave3.save_character(data_path("characters", "characters"), name,
+                                    args.character_skull, args.character_costume,
+                                    args.character_instrument, args.character_voice,
+                                    args.character_line)
+    except (OSError, ValueError) as exc:
+        print(f"doot : personnage impossible : {exc}")
+        return 2
+    print(f"doot : personnage cree -> {path}")
+    return 0
+
+
+def do_characters(args) -> int:
+    entries = wave3.characters(data_path("characters", "characters"))
+    print(f"Studio de personnages ({len(entries)}) :")
+    for item in entries:
+        print(f"  {item['name']} — {item['costume']}, {item['instrument']}, voix {item['voice']}")
+        print(f"    « {item['line']} »")
+    return 0
+
+
+def do_character_pack(args, wanted: str, destination: str) -> int:
+    try:
+        path = wave3.character_pack(_character_path(wanted), Path(destination).expanduser())
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"doot : pack de personnage impossible : {exc}")
+        return 2
+    print(f"doot : personnage exporte -> {path}")
+    return 0
+
+
+def do_radio(args, seed: str) -> int:
+    print("Radio Crypte — programmation automatique")
+    for show in wave3.radio_schedule(seed):
+        print(f"  {show['at']}  {show['title']} — {show['style']}")
+    return 0
+
+
+def do_coop(args, action: str) -> int:
+    state = read_state()
+    try:
+        item = wave3.coop_action(state, action)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if item["score"] == 4:
+        note_succes(args, "coop", score=item["score"])
+    print(f"Coop locale — score {item['score']}, serie {item['streak']}, au joueur {item['turn']}.")
+    return 0
+
+
+def do_night_infinite(args, seed: str) -> int:
+    state = read_state()
+    item = wave3.endless_night(state, seed)
+    write_state(state)
+    if item["completed"]:
+        note_succes(args, "nuit_infinie", completed=True)
+    print(f"Nuit infinie — acte {item['act']}/6 — energie {item['energy']}")
+    print("  AUBE IMPOSSIBLE — finale debloquee." if item["completed"] else
+          "  Relance --night-infinite pour avancer d'un acte.")
     return 0
 
 
@@ -2372,6 +2699,44 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
     parser.add_argument("--duel-opponent", default="la crypte", metavar="NOM")
     parser.add_argument("--riddles", action="store_true",
                         help="affiche les indices des succes secrets")
+    parser.add_argument("--expedition", nargs="?", const="", default=None, metavar="GRAINE",
+                        help="lance ou reprend une expedition roguelite de sept salles")
+    parser.add_argument("--expedition-choose", default=None, metavar="CHOIX",
+                        help="avance avec prudence ou audace dans l'expedition")
+    parser.add_argument("--campaign-editor", default=None, metavar="DESTINATION",
+                        help="exporte l'editeur visuel autonome de campagnes")
+    parser.add_argument("--campaign-pack", nargs=2, default=None,
+                        metavar=("CAMPAGNE_JSON", "DESTINATION"))
+    parser.add_argument("--constellation", default=None, metavar="DESTINATION",
+                        help="exporte la carte interactive des succes")
+    parser.add_argument("--familiars", action="store_true", help="liste les familiers spectraux")
+    parser.add_argument("--familiar", default=None, metavar="NOM")
+    parser.add_argument("--familiar-bond", default=None, metavar="ACTIVITE")
+    parser.add_argument("--contract", action="store_true", help="affiche le contrat de flotte")
+    parser.add_argument("--contract-add", type=int, default=None, metavar="N")
+    parser.add_argument("--contract-share", default=None, metavar="DESTINATION")
+    parser.add_argument("--contract-join", default=None, metavar="FICHIER")
+    parser.add_argument("--dj-import", default=None, metavar="WAV")
+    parser.add_argument("--dj-slices", type=int, default=8, metavar="N")
+    parser.add_argument("--ambient-mode", nargs="?", const="status", default=None,
+                        metavar="PRESET", help="ambiance : bougies, orage, lune ou oled")
+    parser.add_argument("--replay-gif", default=None, metavar="DESTINATION")
+    parser.add_argument("--code-hunt", action="store_true")
+    parser.add_argument("--code-submit", default=None, metavar="CODE")
+    parser.add_argument("--new-game-plus", action="store_true")
+    parser.add_argument("--character", default=None, metavar="NOM")
+    parser.add_argument("--characters", action="store_true")
+    parser.add_argument("--character-skull", default="classique", metavar="STYLE")
+    parser.add_argument("--character-costume", default="cape", metavar="COSTUME")
+    parser.add_argument("--character-instrument", default="trompette", metavar="INSTRUMENT")
+    parser.add_argument("--character-voice", default="doot", metavar="VOIX")
+    parser.add_argument("--character-line", default="En mesure, les vivants !", metavar="REPLIQUE")
+    parser.add_argument("--character-pack", nargs=2, default=None,
+                        metavar=("PERSONNAGE", "DESTINATION"))
+    parser.add_argument("--radio", nargs="?", const="", default=None, metavar="GRAINE")
+    parser.add_argument("--coop", nargs="?", const="start", default=None, metavar="ACTION")
+    parser.add_argument("--night-infinite", nargs="?", const="", default=None,
+                        metavar="GRAINE")
     parser.add_argument("--accessibility", action="store_true",
                         help="affiche les reglages d'accessibilite actifs")
     parser.add_argument("--fleet-parade", nargs="?", const="", default=None,
@@ -2660,6 +3025,8 @@ def main(argv: list[str] | None = None) -> int:
     p.get("choreographies", p["data"] / "choreographies").mkdir(parents=True, exist_ok=True)
     p.get("packs", p["data"] / "packs").mkdir(parents=True, exist_ok=True)
     p.get("replays", p["data"] / "replays").mkdir(parents=True, exist_ok=True)
+    p.get("dj", p["data"] / "dj").mkdir(parents=True, exist_ok=True)
+    p.get("characters", p["data"] / "characters").mkdir(parents=True, exist_ok=True)
 
     if args.profiles:
         return do_profiles(args)
@@ -2765,6 +3132,54 @@ def main(argv: list[str] | None = None) -> int:
         return do_music_duels(args)
     if args.riddles:
         return do_riddles(args)
+    if args.expedition_choose:
+        return do_expedition_choose(args, args.expedition_choose)
+    if args.expedition is not None:
+        return do_expedition(args, args.expedition)
+    if args.campaign_editor:
+        return do_campaign_editor(args, args.campaign_editor)
+    if args.campaign_pack:
+        return do_campaign_pack(args, args.campaign_pack[0], args.campaign_pack[1])
+    if args.constellation:
+        return do_constellation(args, args.constellation)
+    if args.familiar_bond:
+        return do_familiar_bond(args, args.familiar_bond)
+    if args.familiar:
+        return do_familiar(args, args.familiar)
+    if args.familiars:
+        return do_familiars(args)
+    if args.contract_add is not None:
+        return do_contract_add(args, args.contract_add)
+    if args.contract_share:
+        return do_contract_share(args, args.contract_share)
+    if args.contract_join:
+        return do_contract_join(args, args.contract_join)
+    if args.contract:
+        return do_contract(args)
+    if args.dj_import:
+        return do_dj_import(args, args.dj_import)
+    if args.ambient_mode is not None:
+        return do_ambient_mode(args, args.ambient_mode)
+    if args.replay_gif:
+        return do_replay_gif(args, args.replay_gif)
+    if args.code_submit:
+        return do_code_submit(args, args.code_submit)
+    if args.code_hunt:
+        return do_code_hunt(args)
+    if args.new_game_plus:
+        return do_new_game_plus(args)
+    if args.character_pack:
+        return do_character_pack(args, args.character_pack[0], args.character_pack[1])
+    if args.character:
+        return do_character(args, args.character)
+    if args.characters:
+        return do_characters(args)
+    if args.radio is not None:
+        return do_radio(args, args.radio)
+    if args.coop is not None:
+        return do_coop(args, args.coop)
+    if args.night_infinite is not None:
+        return do_night_infinite(args, args.night_infinite)
     if args.accessibility:
         return do_accessibility(args)
     if args.melodies:

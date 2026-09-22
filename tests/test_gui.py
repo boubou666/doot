@@ -38,6 +38,15 @@ class CatalogueGraphique(unittest.TestCase):
             "--ritual-add", "--ritual-at", "--ritual-action", "--ritual-value",
             "--ritual-delete", "--museum", "--skeletons", "--skeleton",
             "--music-duel", "--music-duels", "--duel-opponent", "--riddles",
+            "--expedition", "--expedition-choose", "--campaign-editor",
+            "--campaign-pack", "--constellation", "--familiars", "--familiar",
+            "--familiar-bond", "--contract", "--contract-add", "--contract-share",
+            "--contract-join", "--dj-import", "--dj-slices", "--ambient-mode",
+            "--replay-gif", "--code-hunt", "--code-submit", "--new-game-plus",
+            "--character", "--characters", "--character-skull",
+            "--character-costume", "--character-instrument", "--character-voice",
+            "--character-line", "--character-pack", "--radio", "--coop",
+            "--night-infinite",
             "--accessibility",
         }
         self.assertEqual(options, attendues)
@@ -84,6 +93,13 @@ class CompositionCommande(unittest.TestCase):
         parsed = cli.build_parser().parse_args(argv)
         self.assertTrue(parsed.once)
         self.assertEqual(parsed.formation, "wave")
+
+    def test_une_commande_a_deux_arguments_garde_le_second_positionnel(self):
+        argv = gui.build_command_argv(
+            self.command("campaign-pack"),
+            {"--campaign-pack": "campagne.json", "": "packs"}, {}, self.settings,
+        )
+        self.assertEqual(argv, ["--campaign-pack", "campagne.json", "packs"])
 
     def test_un_parametre_obligatoire_manquant_est_refuse(self):
         with self.assertRaisesRegex(ValueError, "Melodie"):
