@@ -12,6 +12,23 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.23.0] - 2026-09-22
+
+### Ajouté
+- Le duel possède un classement saisonnier partagé : `--duel-name` choisit le
+  nom du combattant, `--duel-board` synchronise et affiche les doots et les
+  rencontres spéciales. La fusion est idempotente et les actions figurent dans
+  la GUI.
+- Un compositeur RTTTL façon Mario Paint rejoint la GUI : grille de 16 pas,
+  tempo, octave, écoute immédiate et sauvegarde sans écrasement dans
+  `melodies/`.
+- La GUI affiche hors saison un compte à rebours en jours jusqu'au prochain
+  Dooting Time.
+- Le doot muet devient visuel : `--no-sound`, un volume configuré très bas ou
+  une sortie système détectée muette affiche un immense `D O O T`.
+- Les doots reverse retournent parfois le squelette et leur WAV. Les options
+  `--reverse`, `--reverse-chance` et `--no-reverse` permettent de les régler.
+
 ## [1.22.0] - 2026-09-21
 
 ### Ajouté
@@ -752,7 +769,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.22.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.23.0...HEAD
+[1.23.0]: https://github.com/boubou666/doot/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/boubou666/doot/compare/v1.20.0...v1.22.0
 [1.21.0]: https://github.com/boubou666/doot/compare/v1.20.0...84280d6ace4b5cd6a1da8d5935a2fa58b43a695d
 [1.20.0]: https://github.com/boubou666/doot/compare/v1.19.0...v1.20.0

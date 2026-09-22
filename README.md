@@ -230,7 +230,10 @@ action possède sa vignette, la commande exacte reste visible avant son lancemen
 et sa sortie s'affiche dans un journal intégré, jusque dans des barres de
 défilement en forme d'os. Le daemon peut être lancé en arrière-plan : fermer le
 grimoire ne l'arrête pas. La GUI utilise Tkinter, déjà requis par l'overlay, et
-n'ajoute donc aucune dépendance.
+n'ajoute donc aucune dépendance. Hors saison, son en-tête devient aussi un
+compte à rebours `J-N` jusqu'au prochain Dooting Time. L'onglet **Compositeur**
+offre une grille de 16 pas façon Mario Paint : choisis les notes, le tempo et
+l'octave, écoute immédiatement, puis sauvegarde le RTTTL dans `melodies/`.
 
 ```bash
 doot                         # lance le daemon (c'est ce que fait le démarrage auto)
@@ -246,6 +249,8 @@ doot --codex                 # le livre des apparitions déjà découvertes
 doot --achievements          # les succès locaux, leur progression et le score
 doot --stats                 # le registre : totaux, machines, saison en grille
 doot --carte                 # la carte de la saison, en PNG, quand on veut
+doot --duel-name "Doot Vader"  # choisit ton nom dans le classement partagé
+doot --duel-board            # synchronise et affiche le classement de la saison
 doot --profiles              # les profils enregistrés et celui qui est actif
 doot --status                # saison, daemon, son et image utilisés
 doot --stop                  # arrête le daemon
@@ -277,6 +282,9 @@ doot --art                   # imprime le squelette dans le terminal
 | `--spin` | — | ce doot fait un tour complet sur lui-même (impose l'apparition sur place) |
 | `--spin-chance` | `0.25` | proportion des apparitions sur place qui font un tour complet |
 | `--spin-ms` | `700` | durée du tour complet, en millisecondes |
+| `--reverse` | — | force un squelette à l'envers et son doot WAV joué à rebours |
+| `--reverse-chance` | `0.03` | proportion de doots inversés, image et son ensemble |
+| `--no-reverse` | — | désactive complètement les doots inversés |
 | `--melody-chance` | `0.05` | proportion de déclenchements qui jouent une mélodie au lieu d'un doot |
 | `--melody-pity` | `40` | le N-ième déclenchement sans mélodie en joue une à coup sûr (`0` : aucune garantie) |
 | `--no-melody` | — | jamais de mélodie à la place d'un doot |
@@ -287,7 +295,7 @@ doot --art                   # imprime le squelette dans le terminal
 | `--no-contagion` | — | coupe l'émission et la réception des doots contagieux |
 | `--no-spin` | — | jamais de tour complet, le squelette reste droit |
 | `--screen` | `random` | écran d'apparition : `random`, `primary`, ou un index (`0`, `1`…) |
-| `--no-sound` | — | mode muet |
+| `--no-sound` | — | mode muet ; affiche un `D O O T` géant à la place du son |
 | `--no-pan` | — | son au centre, au lieu de suivre la position du squelette |
 | `--regen-sound` | — | régénère le jingle |
 | `--ignore-season` | — | ignore la fenêtre saisonnière (tests) |
@@ -395,6 +403,14 @@ caractères au plus — et cherché **par égalité** dans le catalogue local. J
 comme un chemin : `doot --play` accepte un fichier, et ce chemin-là ne doit pas
 pouvoir être choisi depuis le dépôt partagé.
 
+Le même partage tient aussi le **duel de doot**. Chaque poste choisit son nom
+avec `doot --duel-name "Doot Vader"`; `doot --duel-board` synchronise puis
+classe les combattants par nombre de doots, puis par rencontres spéciales. Les
+compteurs repartent par saison et une part relue deux fois ne double jamais le
+score. Les deux actions sont également disponibles dans la GUI. Le dépôt sert
+de relais, donc le duel ne demande ni adresse publique ni ouverture de port à
+travers le NAT.
+
 Rien d'autre à lancer : un dépôt injoignable ou un disque plein laissent la
 progression locale intacte et l'ennui dans `doot --succes`, parce qu'un doot ne
 doit jamais dépendre du partage. `--no-contagion` coupe ces apparitions sans
@@ -475,9 +491,9 @@ doot --merge  ~/ma-cle-usb
 
 #### Ce qui voyage, et ce qui reste
 
-L'export ne porte que l'identité, les statistiques et les succès. Les compteurs
-de pitié restent au poste : ils décrivent son rythme, pas ce qui y a été
-accompli.
+L'export porte l'identité, les statistiques, les succès et le classement du
+duel. Les compteurs de pitié restent au poste : ils décrivent son rythme, pas
+ce qui y a été accompli.
 
 L'identité de chaque poste et les réglages du partage, clé comprise, vivent dans
 `replica.json`, à côté de `state.json` mais pas dedans, parce que `state.json` se
@@ -495,10 +511,10 @@ Ce qu'un poste publie porte aussi ce qu'il a appris des autres, donc deux
 machines jamais allumées en même temps se rejoignent par l'intermédiaire d'une
 troisième.
 
-C'est de la convergence entre tes machines, pas un classement : la progression
-reste falsifiable en local, et rien ici ne prétend le contraire.
+C'est un classement amical entre les membres de la flotte : les compteurs
+restent falsifiables en local, et rien ici ne prétend le contraire.
 
-### Et un classement en ligne ?
+### Et un classement public en ligne ?
 
 Le score local prépare le terrain, mais l'envoi doit rester explicitement activé
 par la personne. Une petite API suffit : le client envoie des **événements** munis
@@ -890,6 +906,14 @@ le nom d'une mélodie fournie la remplace, comme un son ou une image.
 
 Une ligne est une voix. Pour jouer plusieurs notes en parallèle, mets autant
 de sonneries RTTTL complètes que tu veux, une par ligne, toutes au même tempo.
+
+Si écrire cette syntaxe à la main ne t'amuse pas, ouvre `doot --gui`, onglet
+**Compositeur**. Chaque colonne représente un seizième de note ; un clic pose
+une hauteur, un autre clic dans la même colonne la remplace, et recliquer la
+même note l'efface. Les cases vides deviennent des silences. Le bouton
+**Écouter** joue un brouillon même hors saison et **Sauvegarder** crée un nom
+neuf sans écraser une mélodie existante.
+
 Les voix sont additionnées et chacune est ramenée à `1 / nombre_de_voix` : le
 mix ne sature pas, quel que soit le nombre de voix. Chaque ligne affiche aussi
 son propre squelette, qui hoche uniquement sur ses notes. Ils partagent un seul
@@ -958,6 +982,20 @@ panoramiser : MCI sous Windows, un filtre `pan` sous Linux. Quand rien ne sait,
 le son est joué au centre plutôt que pas du tout.
 
 `--no-pan` désactive tout ça.
+
+### Doot muet et doot reverse
+
+Quand `--no-sound` est actif, que `--volume` tombe à 5 % ou moins, ou que la
+sortie système est détectée muette ou presque inaudible, l'overlay affiche
+**D O O T** en taille 84. La détection passe par Core Audio sous Windows,
+`get volume settings` sous macOS et `wpctl`/`pactl` sous Linux ; si aucun de
+ces mécanismes ne répond, le comportement sonore historique est conservé.
+
+Trois pour cent des apparitions ordinaires sont des doots reverse : le PNG fait
+un demi-tour et les trames du WAV sont jouées dans l'ordre inverse. `--reverse`
+le force pour un essai et `--no-reverse` le coupe. Si le son choisi est dans un
+format compressé, le reverse utilise le jingle synthétisé en WAV, afin de ne
+pas ajouter de décodeur audio au projet.
 
 ## 🗝️ Où sont les fichiers
 
