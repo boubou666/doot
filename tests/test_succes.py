@@ -155,6 +155,13 @@ class EspecesDeStatistiques(unittest.TestCase):
         succes.enregistrer(etat, "rencontre_perso")
         succes.enregistrer(etat, "pack")
         succes.enregistrer(etat, "parade_flotte")
+        succes.enregistrer(etat, "boss", defeated=True)
+        succes.enregistrer(etat, "campagne", completed=True)
+        succes.enregistrer(etat, "invasion")
+        succes.enregistrer(etat, "replay")
+        succes.enregistrer(etat, "studio_live")
+        succes.enregistrer(etat, "musee", year=2025)
+        succes.enregistrer(etat, "enigme", nom="douzieme_coup")
         return set(etat["stats"])
 
     def test_la_table_couvre_ce_qui_est_ecrit(self):

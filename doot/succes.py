@@ -26,12 +26,13 @@ BADGES_DIR = Path(__file__).resolve().parent / "assets" / "success"
 TOTAUX = (
     "doots", "declenchements", "canons", "tours_imposes", "evenements",
     "melodies", "melodies_perso", "rickrolls", "defis_termines",
-    "packs_importes", "rencontres_creees", "parades_flotte",
+    "packs_importes", "rencontres_creees", "parades_flotte", "boss_vaincus",
+    "campagnes_terminees", "invasions_terminees", "replays_exportes", "takes_live",
 )
 MAXIMA = ("plus_grande_salve", "voix_max", "serie_defis")
 ENSEMBLES = (
     "formations", "bords_imposes", "evenements_vus", "melodies_fournies",
-    "jours_actifs", "profils_actifs",
+    "jours_actifs", "profils_actifs", "enigmes_resolues", "saisons_archivees",
 )
 
 
@@ -45,6 +46,8 @@ class Succes:
     points: int
     objectif: int
     progression: Progression
+    secret: bool = False
+    indices: tuple[str, ...] = ()
 
 
 def entier(valeur) -> int:
@@ -104,6 +107,10 @@ def _nombre_dans_liste(cle: str) -> Progression:
 
 def _valeur(cle: str) -> Progression:
     return lambda stats: _compteur(stats, cle)
+
+
+def _contient(cle: str, valeur: str) -> Progression:
+    return lambda stats: 1 if valeur in _liste(stats, cle) else 0
 
 
 CATALOGUE = (
@@ -167,6 +174,34 @@ CATALOGUE = (
     Succes("chef_de_flotte", "Chef de flotte",
            "Lancer une parade synchronisee entre les machines.",
            30, 1, _valeur("parades_flotte")),
+    Succes("chasseur_boss", "Chasseur de titan",
+           "Vaincre le boss saisonnier.", 50, 1, _valeur("boss_vaincus")),
+    Succes("conteur_crypte", "Conteur de la crypte",
+           "Terminer la campagne narrative.", 40, 1, _valeur("campagnes_terminees")),
+    Succes("maitre_invasion", "Maitre de l'invasion",
+           "Survivre a une invasion complete.", 35, 1, _valeur("invasions_terminees")),
+    Succes("archiviste_saisons", "Archiviste des saisons",
+           "Ouvrir le musee apres avoir archive une saison.", 25, 1,
+           _nombre_dans_liste("saisons_archivees")),
+    Succes("chef_orchestre_live", "Chef d'orchestre live",
+           "Exporter un replay ou enregistrer un take live.", 25, 1,
+           lambda stats: _compteur(stats, "replays_exportes") + _compteur(stats, "takes_live")),
+    Succes("douzieme_coup", "Le douzieme coup",
+           "Faire resonner le doot quand le cadran recommence.", 35, 1,
+           _contient("enigmes_resolues", "douzieme_coup"), True,
+           ("Le cadran doit perdre ses deux aiguilles.", "Cherche le debut d'une nuit.")),
+    Succes("miroir_funebre", "Le miroir funebre",
+           "Faire combattre deux reflets qui remontent le temps.", 35, 1,
+           _contient("enigmes_resolues", "miroir_funebre"), True,
+           ("Deux adversaires se ressemblent.", "Le duel doit remonter le temps.")),
+    Succes("clef_ossuaire", "La clef d'ossuaire",
+           "Trouver le chemin secret de la campagne.", 40, 1,
+           _contient("enigmes_resolues", "clef_ossuaire"), True,
+           ("La crypte se souvient de trois verbes.", "Ecoute, joue, puis franchis.")),
+    Succes("huitieme_voix", "La huitieme voix",
+           "Completer le choeur impossible.", 40, 1,
+           _contient("enigmes_resolues", "huitieme_voix"), True,
+           ("Un choeur garde une place vide.", "Compte les pattes de l'araignee.")),
 )
 
 
@@ -297,6 +332,33 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
 
     elif evenement == "parade_flotte":
         _ajoute(stats, "parades_flotte", origine)
+
+    elif evenement == "boss":
+        if details.get("defeated") is True:
+            _ajoute(stats, "boss_vaincus", origine)
+
+    elif evenement == "campagne":
+        if details.get("completed") is True:
+            _ajoute(stats, "campagnes_terminees", origine)
+
+    elif evenement == "invasion":
+        _ajoute(stats, "invasions_terminees", origine)
+
+    elif evenement == "replay":
+        _ajoute(stats, "replays_exportes", origine)
+
+    elif evenement == "studio_live":
+        _ajoute(stats, "takes_live", origine)
+
+    elif evenement == "musee":
+        year = details.get("year")
+        if isinstance(year, int) and not isinstance(year, bool):
+            _ajoute_unique(stats, "saisons_archivees", str(year))
+
+    elif evenement == "enigme":
+        nom = details.get("nom")
+        if isinstance(nom, str):
+            _ajoute_unique(stats, "enigmes_resolues", nom)
 
     return _debloquer(etat, maintenant)
 
@@ -441,3 +503,14 @@ def badge(definition: Succes) -> Path | None:
 def progression(etat: dict, definition: Succes) -> tuple[int, int]:
     courant = min(definition.objectif, definition.progression(_lu(etat)))
     return courant, definition.objectif
+
+
+def visible(etat: dict, definition: Succes) -> tuple[str, str]:
+    """Titre et texte a montrer sans vendre la solution d'un succes secret."""
+
+    if not definition.secret or definition.identifiant in debloques(etat):
+        return definition.titre, definition.description
+    current, _target = progression(etat, definition)
+    if current:
+        return definition.titre, definition.indices[-1] if definition.indices else "Indice revele."
+    return "Succes secret", definition.indices[0] if definition.indices else "Une enigme reste a resoudre."

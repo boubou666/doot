@@ -73,6 +73,7 @@ class AchievementCard:
     courant: int
     objectif: int
     debloque_le: str | None
+    secret: bool = False
 
 
 def achievement_cards(etat: dict) -> tuple[AchievementCard, ...]:
@@ -83,14 +84,16 @@ def achievement_cards(etat: dict) -> tuple[AchievementCard, ...]:
     for definition in succes.CATALOGUE:
         courant, objectif = succes.progression(etat, definition)
         date = acquis.get(definition.identifiant)
+        titre, description = succes.visible(etat, definition)
         cards.append(AchievementCard(
             identifiant=definition.identifiant,
-            titre=definition.titre,
-            description=definition.description,
+            titre=titre,
+            description=description,
             points=definition.points,
             courant=courant,
             objectif=objectif,
             debloque_le=date if isinstance(date, str) else None,
+            secret=definition.secret,
         ))
     return tuple(cards)
 
@@ -265,9 +268,12 @@ COMMANDS: tuple[CommandSpec, ...] = (
     CommandSpec(
         "pack-export", "Exporter un pack",
         "Emballe images, sons, melodies et rencontres personnelles.",
-        parameters=(ParameterSpec(
-            "--pack-export", "Nom ; destination", "Halloween; C:\\packs", True,
-        ),), image="success/couturier.png",
+        parameters=(
+            ParameterSpec("--pack-export", "Nom ; destination", "Halloween; C:\\packs", True),
+            ParameterSpec("--pack-author", "Auteur", "Doot Vader", False),
+            ParameterSpec("--pack-description", "Description", "Une nuit tres ossee", False),
+            ParameterSpec("--pack-version", "Version", "1.0", False),
+        ), image="success/couturier.png",
     ),
     CommandSpec(
         "pack-import", "Importer un pack",
@@ -432,6 +438,70 @@ COMMANDS: tuple[CommandSpec, ...] = (
         "Imprime le squelette en ASCII dans la console integree.",
         ("--art",), image="success/premier_doot.png",
     ),
+    CommandSpec("campaign", "Campagne narrative", "Reprend l'histoire au chapitre courant.",
+                ("--campaign",), image="success/conteur_crypte.png"),
+    CommandSpec("campaign-choose", "Choisir dans la campagne", "Grave un choix narratif.",
+                parameters=(ParameterSpec("--campaign-choose", "Choix", "ecouter"),),
+                image="success/conteur_crypte.png"),
+    CommandSpec("boss", "Boss saisonnier", "Affiche ses points de vie et la progression du combat.",
+                ("--boss",), image="success/chasseur_boss.png"),
+    CommandSpec("boss-hit", "Frapper le boss", "Transforme une salve en degats.",
+                parameters=(ParameterSpec("--boss-hit", "Degats", "10"),),
+                image="success/chasseur_boss.png"),
+    CommandSpec("invasion", "Mode invasion", "Enchaine des vagues de formations croissantes.",
+                ("--invasion",), image="success/maitre_invasion.png"),
+    CommandSpec("combo", "Combo", "Affiche la chaine d'actions et le multiplicateur.",
+                ("--combo",), image="success/canon_a_os.png"),
+    CommandSpec("generate-melody", "Melodie procedurale", "Compose une sonnerie reproductible.",
+                parameters=(ParameterSpec("--generate-melody", "Style", "macabre"),
+                            ParameterSpec("--melody-seed", "Graine", "nuit-13", False),
+                            ParameterSpec("--melody-name", "Nom", "theme-du-titan", False)),
+                image="success/maestro.png"),
+    CommandSpec("replay-export", "Replay partageable", "Exporte la chronique recente en HTML anime.",
+                parameters=(ParameterSpec("--replay-export", "Destination", "replays"),),
+                image="success/chef_orchestre_live.png"),
+    CommandSpec("choreographer", "Choregraphe visuel", "Ouvre l'editeur de timeline.",
+                ("--choreographer",), image="success/choregraphe.png", detached=True),
+    CommandSpec("choreographies", "Voir les choregraphies", "Liste les timelines sauvegardees.",
+                ("--choreographies",), image="success/choregraphe.png"),
+    CommandSpec("choreography-save", "Sauver la choregraphie", "Sauvegarde la salve courante.",
+                parameters=(ParameterSpec("--choreography-save", "Nom", "bal-des-os"),),
+                image="success/choregraphe.png"),
+    CommandSpec("choreography-play", "Jouer la choregraphie", "Execute une timeline sauvegardee.",
+                parameters=(ParameterSpec("--choreography-play", "Nom", "bal-des-os"),),
+                image="success/choregraphe.png"),
+    CommandSpec("studio-live", "Studio Live", "Capture les notes au clavier et les quantifie.",
+                ("--studio-live",), image="success/chef_orchestre_live.png", detached=True),
+    CommandSpec("rituals", "Rituels planifies", "Liste les apparitions quotidiennes.",
+                ("--rituals",), image="success/sept_jours.png"),
+    CommandSpec("ritual-add", "Ajouter un rituel", "Planifie un doot ou une melodie.",
+                parameters=(ParameterSpec("--ritual-add", "Nom", "lever-des-os"),
+                            ParameterSpec("--ritual-at", "Heure", "08:13"),
+                            ParameterSpec("--ritual-action", "Action", "doot", False),
+                            ParameterSpec("--ritual-value", "Melodie", "rickroll", False)),
+                image="success/sept_jours.png"),
+    CommandSpec("ritual-delete", "Supprimer un rituel", "Retire une planification.",
+                parameters=(ParameterSpec("--ritual-delete", "Nom", "lever-des-os"),),
+                image="success/sept_jours.png"),
+    CommandSpec("pack-library", "Bibliotheque de packs", "Verifie signatures et metadonnees.",
+                ("--pack-library",), image="success/couturier.png"),
+    CommandSpec("museum", "Musee des saisons", "Expose campagnes, boss, rencontres et enigmes.",
+                ("--museum",), image="success/archiviste_saisons.png"),
+    CommandSpec("skeletons", "Personnalites", "Liste les squelettes et leurs styles.",
+                ("--skeletons",), image="success/profil_actif.png"),
+    CommandSpec("skeleton", "Choisir un squelette", "Active une personnalite de la troupe.",
+                parameters=(ParameterSpec("--skeleton", "Nom", "jazz"),),
+                image="success/profil_actif.png"),
+    CommandSpec("music-duel", "Duel musical", "Lance un motif appel-reponse.",
+                parameters=(ParameterSpec("--music-duel", "Motif", "c,d,e,g"),
+                            ParameterSpec("--duel-opponent", "Adversaire", "Doot Vader", False)),
+                image="success/orchestre.png"),
+    CommandSpec("music-duels", "Voir les duels musicaux", "Liste les defis ouverts.",
+                ("--music-duels",), image="success/orchestre.png"),
+    CommandSpec("riddles", "Succes secrets", "Revele progressivement les indices d'enigmes.",
+                ("--riddles",), image="logo.png"),
+    CommandSpec("accessibility", "Accessibilite", "Resume les protections visuelles et sonores.",
+                ("--accessibility",), image="logo.png"),
     CommandSpec(
         "help", "Aide complete",
         "Affiche toutes les options de la ligne de commande.",
@@ -1384,7 +1454,8 @@ class DootApp:
             highlightbackground=border, padx=10, pady=10,
         )
 
-        image = self._load_image(f"success/{card.identifiant}.png", 72)
+        image_name = "logo.png" if card.secret and not unlocked else f"success/{card.identifiant}.png"
+        image = self._load_image(image_name, 72)
         self.tk.Label(frame, image=image, bg=background, bd=0).pack(
             side="left", anchor="n", padx=(0, 10),
         )
@@ -1399,7 +1470,7 @@ class DootApp:
             wraplength=180,
         ).pack(side="left", fill="x", expand=True)
         self.tk.Label(
-            title_row, text=f"+{card.points}", bg=background,
+            title_row, text=(f"+{card.points}" if not card.secret or unlocked else "???"), bg=background,
             fg=self.GOLD, font=("Segoe UI", 9, "bold"),
         ).pack(side="right", anchor="n", padx=(5, 0))
         self.tk.Label(

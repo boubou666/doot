@@ -8,6 +8,7 @@ import ctypes
 import json
 import os
 import random
+import shutil
 import sys
 import time
 import zipfile
@@ -15,9 +16,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import (
-    __version__, art, carte, challenges, coffre, codex, contagion, content, duel,
-    history, image, notification, packs, partage, profiles, registre, schedule,
-    season, sound, succes,
+    __version__, adventure, art, carte, challenges, choreography, coffre, codex,
+    contagion, content, duel, history, image, notification, packs, partage,
+    procedural, profiles, registre, replay, rituals, schedule, season, sound, succes,
 )
 
 DEFAULT_MIN_SECONDS = 600     # 10 min
@@ -64,6 +65,10 @@ def paths() -> dict[str, Path]:
         "profiles": root / "profiles.json",
         "content": root / "content.json",
         "history": root / "history.jsonl",
+        "rituals": root / "rituals.json",
+        "choreographies": root / "choreographies",
+        "packs": root / "packs",
+        "replays": root / "replays",
     }
 
 
@@ -368,7 +373,8 @@ def emit_doots(args, journal: bool = False, evenement: str | None = None) -> int
             wav, picture, duration = resolve_media(args, reverse=reverse)
             visual_text = (
                 "D O O T"
-                if sound.visual_fallback_needed(args.no_sound, args.volume, wav)
+                if (sound.visual_fallback_needed(args.no_sound, args.volume, wav)
+                    or getattr(args, "high_contrast", False))
                 else None
             )
             window.show(wav_path=wav, duration=duration, image_path=picture,
@@ -387,6 +393,7 @@ def emit_doots(args, journal: bool = False, evenement: str | None = None) -> int
                 spin=args.spin,
                 bord=args.side,
                 rencontre=evenement,
+                reverse=args.reverse,
             )
     return joues
 
@@ -488,6 +495,9 @@ def note_succes(args, evenement: str, **details) -> None:
 
     etat = read_state()
     nouveaux = succes.enregistrer(etat, evenement, **details)
+    adventure.record_combo(etat, evenement)
+    for secret in adventure.observe_riddles(etat, evenement, **details):
+        nouveaux.extend(succes.enregistrer(etat, "enigme", nom=secret))
     challenge_done = False
     if evenement == "doots":
         challenge_done |= challenges.record(
@@ -862,7 +872,11 @@ def do_challenge(args) -> int:
 
 def do_pack_export(args, name: str, destination: str) -> int:
     try:
-        path = packs.export(paths()["data"], Path(destination).expanduser(), name)
+        path = packs.export(
+            paths()["data"], Path(destination).expanduser(), name,
+            author=args.pack_author, description=args.pack_description,
+            pack_version=args.pack_version,
+        )
     except (OSError, ValueError) as exc:
         print(f"doot : export du pack impossible : {exc}")
         return 2
@@ -877,7 +891,311 @@ def do_pack_import(args, source: str) -> int:
         print(f"doot : import du pack impossible : {exc}")
         return 2
     note_succes(args, "pack", nom=name)
+    try:
+        library = data_path("packs", "packs")
+        library.mkdir(parents=True, exist_ok=True)
+        target = library / Path(source).name
+        if not target.exists():
+            shutil.copy2(Path(source).expanduser(), target)
+    except OSError:
+        pass
     print(f"doot : pack '{name}' importe ({len(installed)} fichier(s)).")
+    return 0
+
+
+def do_pack_library(args) -> int:
+    entries = packs.library(data_path("packs", "packs"))
+    print(f"Bibliotheque de packs ({len(entries)}) :")
+    if not entries:
+        print("  aucun pack archive ; les imports futurs seront conserves ici")
+    for path, metadata in entries:
+        author = f" par {metadata['author']}" if metadata["author"] else ""
+        trust = "verifie" if metadata["verified"] else "ancien format"
+        print(f"  {metadata['name']} {metadata['pack_version']}{author} — {trust} — {path.name}")
+        if metadata["description"]:
+            print(f"    {metadata['description']}")
+    return 0
+
+
+def do_campaign(args) -> int:
+    state = read_state()
+    status = adventure.campaign_status(state)
+    write_state(state)
+    print(f"Campagne de la crypte — {status['index']}/{status['total']} chapitre(s)")
+    if status["completed"]:
+        print("  FIN — la clef d'ossuaire repose dans ton musee.")
+        return 0
+    chapter = status["chapter"]
+    print(f"\n{chapter.titre}\n  {chapter.texte}")
+    for key, label in chapter.choix:
+        print(f"  - {key:<10} {label}")
+    print("\nChoisir : doot --campaign-choose MOT")
+    return 0
+
+
+def do_campaign_choose(args, choice: str) -> int:
+    state = read_state()
+    try:
+        status = adventure.choose(state, choice)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    note_succes(args, "campagne", completed=status["completed"])
+    print("doot : choix grave dans l'os.")
+    return do_campaign(args)
+
+
+def do_boss(args) -> int:
+    state = read_state()
+    boss = adventure.seasonal_boss(state)
+    write_state(state)
+    bar = "#" * round(20 * (boss["max_hp"] - boss["hp"]) / boss["max_hp"])
+    print(f"Boss saisonnier : {boss['name']}")
+    print(f"  [{bar:<20}] {boss['hp']}/{boss['max_hp']} PV")
+    print("  doot --boss-hit N pour transformer une salve en degats")
+    return 0
+
+
+def do_boss_hit(args, damage: int) -> int:
+    state = read_state()
+    before = adventure.seasonal_boss(state)
+    try:
+        boss = adventure.hit_boss(state, damage)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    if boss["defeated"] and not before["defeated"]:
+        note_succes(args, "boss", defeated=True)
+        print(f"DOOT FINAL ! {boss['name']} est vaincu.")
+    else:
+        print(f"doot : {min(50, damage)} degats — {boss['hp']}/{boss['max_hp']} PV")
+    return 0
+
+
+def do_combo(args) -> int:
+    combo = adventure.combo_status(read_state())
+    if not combo:
+        print("Combo : aucune action. Enchaine deux commandes en moins de 8 secondes.")
+    else:
+        print(f"Combo : x{combo.get('count', 0)} — multiplicateur x{combo.get('multiplier', 1)} "
+              f"— record {combo.get('best', 0)}")
+    return 0
+
+
+def do_invasion(args, waves: int) -> int:
+    if not args.ignore_season and not season.in_season():
+        print(f"doot : {season.describe()}")
+        return 3
+    waves = max(1, min(10, int(waves)))
+    print(f"Invasion : {waves} vague(s) approchent.")
+    for index in range(1, waves + 1):
+        wave_args = copy.copy(args)
+        wave_args.burst_min = wave_args.burst_max = min(12, index + 1)
+        wave_args.formation = ("wave", "rain", "canon", "vortex", "duel")[(index - 1) % 5]
+        print(f"  vague {index}/{waves} — {wave_args.formation}")
+        emit_doots(wave_args, journal=True, evenement="invasion")
+    note_succes(args, "invasion", waves=waves)
+    print("doot : invasion repoussee.")
+    return 0
+
+
+def do_generate_melody(args, style: str) -> int:
+    try:
+        path = procedural.save(paths()["melodies"], style, args.melody_seed, args.melody_name)
+    except (OSError, ValueError) as exc:
+        print(f"doot : generation impossible : {exc}")
+        return 2
+    print(f"doot : melodie procedurale -> {path}")
+    print(f"Jouer : doot --play {path.stem}")
+    return 0
+
+
+def do_replay_export(args, destination: str) -> int:
+    entries = history.read(data_path("history", "history.jsonl"), 50)
+    try:
+        path = replay.export(entries, Path(destination).expanduser())
+    except OSError as exc:
+        print(f"doot : replay impossible : {exc}")
+        return 2
+    note_succes(args, "replay", path=str(path))
+    print(f"doot : replay partageable -> {path}")
+    return 0
+
+
+def do_choreography_save(args, name: str) -> int:
+    try:
+        path = choreography.save(
+            data_path("choreographies", "choreographies"), name,
+            [{"at": 0, "count": max(1, args.burst_min), "formation": args.formation}],
+        )
+    except (OSError, ValueError) as exc:
+        print(f"doot : choregraphie impossible : {exc}")
+        return 2
+    print(f"doot : choregraphie sauvee -> {path}")
+    return 0
+
+
+def _choreography_path(name: str) -> Path:
+    candidate = Path(name).expanduser()
+    if candidate.is_file():
+        return candidate
+    return data_path("choreographies", "choreographies") / f"{choreography.safe_name(name)}.json"
+
+
+def do_choreography_play(args, name: str) -> int:
+    if not args.ignore_season and not season.in_season():
+        print(f"doot : {season.describe()}")
+        return 3
+    try:
+        title, cues = choreography.load(_choreography_path(name))
+    except (OSError, ValueError) as exc:
+        print(f"doot : choregraphie illisible : {exc}")
+        return 2
+    print(f"Choregraphie : {title} ({len(cues)} repere(s))")
+    started = time.monotonic()
+    for cue in cues:
+        time.sleep(max(0, cue.at - (time.monotonic() - started)))
+        cue_args = copy.copy(args)
+        cue_args.burst_min = cue_args.burst_max = cue.count
+        cue_args.formation = cue.formation
+        if cue.melody:
+            result = do_play(cue_args, cue.melody)
+            if result:
+                return result
+        else:
+            emit_doots(cue_args, journal=True)
+    return 0
+
+
+def do_choreographies(args) -> int:
+    files = choreography.list_all(data_path("choreographies", "choreographies"))
+    print(f"Choregraphies ({len(files)}) :")
+    for path in files:
+        try:
+            name, cues = choreography.load(path)
+            print(f"  {path.stem:<24} {len(cues)} repere(s) — {name}")
+        except ValueError:
+            print(f"  {path.name:<24} illisible")
+    return 0
+
+
+def do_rituals(args) -> int:
+    entries = rituals.read(data_path("rituals", "rituals.json"))
+    print(f"Rituels quotidiens ({len(entries)}) :")
+    for item in entries:
+        detail = f" {item['value']}" if item["value"] else ""
+        print(f"  {item['at']}  {item['name']} — {item['action']}{detail}")
+    return 0
+
+
+def do_ritual_add(args, name: str) -> int:
+    if not args.ritual_at:
+        print("doot : --ritual-at HH:MM est requis")
+        return 2
+    try:
+        item = rituals.add(data_path("rituals", "rituals.json"), name, args.ritual_at,
+                           args.ritual_action, args.ritual_value)
+    except (OSError, ValueError) as exc:
+        print(f"doot : rituel impossible : {exc}")
+        return 2
+    print(f"doot : rituel '{item['name']}' planifie a {item['at']}.")
+    return 0
+
+
+def do_ritual_delete(args, name: str) -> int:
+    if not rituals.delete(data_path("rituals", "rituals.json"), name):
+        print(f"doot : rituel inconnu : {name}")
+        return 2
+    print(f"doot : rituel '{name}' supprime.")
+    return 0
+
+
+def run_due_rituals(args) -> int:
+    due = rituals.due(data_path("rituals", "rituals.json"))
+    for item in due:
+        log(f"rituel : {item['name']}", quiet=args.quiet)
+        if item["action"] == "melody" and item["value"]:
+            do_play(args, item["value"])
+        else:
+            emit_doots(args, journal=True, evenement="rituel")
+    return len(due)
+
+
+def do_museum(args) -> int:
+    state = read_state()
+    display = adventure.museum(state)
+    archived = [year for year in display["seasons"] if year < datetime.now().year]
+    if archived:
+        note_succes(args, "musee", year=max(archived))
+        state = read_state()
+        display = adventure.museum(state)
+    print("Musee des saisons")
+    print(f"  saisons archivees : {', '.join(map(str, display['seasons'])) or 'aucune activite datee'}")
+    print(f"  rencontres        : {len(display['events'])}")
+    print(f"  boss vaincus      : {len(display['bosses'])}")
+    print(f"  enigmes resolues  : {display['riddles']}/{len(adventure.RIDDLES)}")
+    print(f"  campagne          : {'terminee' if display['campaign_completed'] else 'en cours'}")
+    return 0
+
+
+def do_skeletons(args) -> int:
+    active = adventure.active_personality(read_state()).identifiant
+    print("Personnalites de squelettes :")
+    for item in adventure.PERSONALITIES:
+        marker = "*" if item.identifiant == active else " "
+        print(f" {marker} {item.identifiant:<10} {item.nom} — {item.replique}")
+    return 0
+
+
+def do_skeleton(args, wanted: str) -> int:
+    state = read_state()
+    try:
+        item = adventure.set_personality(state, wanted)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    write_state(state)
+    print(f"doot : {item.nom} prend la trompette — « {item.replique} »")
+    return 0
+
+
+def do_music_duel(args, motif: str) -> int:
+    state = read_state()
+    try:
+        item = adventure.create_music_duel(state, motif, args.duel_opponent)
+    except ValueError as exc:
+        print(f"doot : duel musical impossible : {exc}")
+        return 2
+    write_state(state)
+    print(f"doot : {item['id']} lance a {item['opponent']} — {item['motif']}")
+    return 0
+
+
+def do_music_duels(args) -> int:
+    entries = adventure.music_duels(read_state())
+    print(f"Duels musicaux ({len(entries)}) :")
+    for item in entries:
+        print(f"  {item['id']} vs {item['opponent']}: {item['motif']} [{item['status']}]")
+    return 0
+
+
+def do_riddles(args) -> int:
+    entries = adventure.riddle_status(read_state())
+    print(f"Succes secrets a enigmes ({sum(item['solved'] for item in entries)}/{len(entries)}) :")
+    for item in entries:
+        marker = "RESOLU" if item["solved"] else f"INDICE {item['hint_level']}/3"
+        print(f"  [{marker}] {item['title']}\n    {item['hint']}")
+    return 0
+
+
+def do_accessibility(args) -> int:
+    print("Accessibilite active :")
+    print(f"  mouvements reduits : {'oui' if args.reduce_motion else 'non'}")
+    print(f"  flashs reduits     : {'oui' if args.no_flash else 'non'}")
+    print(f"  contraste renforce : {'oui' if args.high_contrast else 'non'}")
+    print(f"  limite sonore      : {args.sound_limit:.0%}")
     return 0
 
 
@@ -1441,14 +1759,16 @@ def do_succes(args) -> int:
     )
     for definition in succes.CATALOGUE:
         courant, objectif = succes.progression(etat, definition)
+        titre, description = succes.visible(etat, definition)
         if definition.identifiant in acquis:
             marque = "[x]"
             detail = f"debloque le {acquis[definition.identifiant]}"
         else:
             marque = "[ ]"
             detail = f"progression {courant}/{objectif}"
-        print(f"  {marque} {definition.titre} (+{definition.points})")
-        print(f"      {definition.description}  {detail}")
+        points = f" (+{definition.points})" if not definition.secret or definition.identifiant in acquis else ""
+        print(f"  {marque} {titre}{points}")
+        print(f"      {description}  {detail}")
     print(f"\nProgression locale : {paths()['state']}")
     fiche = partage.reglage(paths()["data"])
     if not fiche.get("cle"):
@@ -1710,6 +2030,9 @@ def do_daemon(args) -> int:
                 time.sleep(wait)
                 continue
 
+            if run_due_rituals(args):
+                continue
+
             delay = random.randint(args.min, args.max)
             log(f"prochain doot dans {delay}s", quiet=args.quiet)
             attendre_avec_contagion(args, delay)
@@ -1922,6 +2245,10 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                         help="ouvre le grimoire graphique de toutes les commandes")
     parser.add_argument("--composer", action="store_true",
                         help="ouvre la page autonome de composition et d'edition RTTTL")
+    parser.add_argument("--choreographer", action="store_true",
+                        help="ouvre l'editeur visuel de choregraphies")
+    parser.add_argument("--studio-live", action="store_true",
+                        help="ouvre le studio de capture et quantification au clavier")
     parser.add_argument("--control", action="store_true",
                         help="ouvre le panneau compact de controle rapide")
     parser.add_argument("--tray", action="store_true",
@@ -1996,6 +2323,57 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                         help="exporte les contenus personnels dans un pack ZIP")
     parser.add_argument("--pack-import", default=None, metavar="FICHIER",
                         help="importe un pack doot sans ecraser les contenus existants")
+    parser.add_argument("--pack-author", default="", metavar="NOM",
+                        help="auteur inscrit dans les metadonnees du pack exporte")
+    parser.add_argument("--pack-description", default="", metavar="TEXTE",
+                        help="description inscrite dans le pack exporte")
+    parser.add_argument("--pack-version", default="1.0", metavar="VERSION",
+                        help="version de contenu inscrite dans le pack exporte")
+    parser.add_argument("--pack-library", action="store_true",
+                        help="liste les packs archives et verifie leurs signatures")
+    parser.add_argument("--campaign", action="store_true",
+                        help="affiche le chapitre courant de la campagne")
+    parser.add_argument("--campaign-choose", default=None, metavar="MOT",
+                        help="grave un choix dans le chapitre courant")
+    parser.add_argument("--boss", action="store_true", help="affiche le boss saisonnier")
+    parser.add_argument("--boss-hit", type=int, default=None, metavar="DEGATS",
+                        help="inflige de 1 a 50 degats au boss saisonnier")
+    parser.add_argument("--combo", action="store_true", help="affiche le combo et son record")
+    parser.add_argument("--invasion", nargs="?", const=3, type=int, default=None,
+                        metavar="VAGUES", help="lance de 1 a 10 vagues progressives")
+    parser.add_argument("--generate-melody", default=None,
+                        choices=tuple(procedural.STYLES), metavar="STYLE",
+                        help="genere une melodie macabre, epique, jazz, chiptune ou chaos")
+    parser.add_argument("--melody-seed", default="doot", metavar="GRAINE")
+    parser.add_argument("--melody-name", default="", metavar="NOM")
+    parser.add_argument("--replay-export", default=None, metavar="DESTINATION",
+                        help="exporte les 50 dernieres actions en replay HTML partageable")
+    parser.add_argument("--choreographies", action="store_true",
+                        help="liste les choregraphies sauvegardees")
+    parser.add_argument("--choreography-save", default=None, metavar="NOM",
+                        help="sauvegarde la salve courante comme choregraphie")
+    parser.add_argument("--choreography-play", default=None, metavar="NOM",
+                        help="joue une choregraphie sauvegardee")
+    parser.add_argument("--rituals", action="store_true", help="liste les rituels quotidiens")
+    parser.add_argument("--ritual-add", default=None, metavar="NOM",
+                        help="ajoute ou remplace un rituel quotidien")
+    parser.add_argument("--ritual-at", default="", metavar="HH:MM")
+    parser.add_argument("--ritual-action", choices=("doot", "melody"), default="doot")
+    parser.add_argument("--ritual-value", default="", metavar="VALEUR")
+    parser.add_argument("--ritual-delete", default=None, metavar="NOM")
+    parser.add_argument("--museum", action="store_true", help="ouvre le musee des saisons")
+    parser.add_argument("--skeletons", action="store_true",
+                        help="liste les personnalites de squelettes")
+    parser.add_argument("--skeleton", default=None, metavar="NOM",
+                        help="choisit la personnalite active")
+    parser.add_argument("--music-duel", default=None, metavar="MOTIF",
+                        help="lance un duel musical avec un motif c,d,e,g")
+    parser.add_argument("--music-duels", action="store_true", help="liste les duels musicaux")
+    parser.add_argument("--duel-opponent", default="la crypte", metavar="NOM")
+    parser.add_argument("--riddles", action="store_true",
+                        help="affiche les indices des succes secrets")
+    parser.add_argument("--accessibility", action="store_true",
+                        help="affiche les reglages d'accessibilite actifs")
     parser.add_argument("--fleet-parade", nargs="?", const="", default=None,
                         metavar="MELODIE",
                         help="lance une parade horodatee sur toute la flotte partagee")
@@ -2070,6 +2448,14 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
     parser.add_argument("--volume", type=float, default=DEFAULT_VOLUME,
                         help="volume du jingle synthetise, 0.0 a 1.0")
     parser.add_argument("--opacity", type=float, default=1.0, help="opacite maximale, 0.0 a 1.0")
+    parser.add_argument("--reduce-motion", action="store_true",
+                        help="coupe glissades, rotations et mouvements rapides")
+    parser.add_argument("--no-flash", action="store_true",
+                        help="coupe les effets brusques et limite l'opacite")
+    parser.add_argument("--high-contrast", action="store_true",
+                        help="force une opacite pleine et le texte visuel de secours")
+    parser.add_argument("--sound-limit", type=float, default=1.0, metavar="PART",
+                        help="plafond sonore global de 0.0 a 1.0")
     parser.add_argument("--font-size", type=int, default=15, help="taille de la police (defaut 15)")
     parser.add_argument("--center", action="store_true", help="toujours au centre au lieu du hasard")
     parser.add_argument("--no-slide", action="store_true",
@@ -2190,6 +2576,7 @@ def parse_args(argv: list[str] | None = None):
     if "--no-reverse" in raw:
         args.reverse = False
     args._profile_loaded = selected
+    args._raw_options = tuple(raw)
     return args
 
 
@@ -2204,6 +2591,14 @@ def main(argv: list[str] | None = None) -> int:
         from . import composer_gui
 
         return composer_gui.main()
+    if args.choreographer:
+        from . import choreography_gui
+
+        return choreography_gui.main()
+    if args.studio_live:
+        from . import live_gui
+
+        return live_gui.main()
     if args.control:
         from . import gui
 
@@ -2227,6 +2622,28 @@ def main(argv: list[str] | None = None) -> int:
     args.event_pity = max(0, args.event_pity)
     args.contagion_chance = max(0.0, min(1.0, args.contagion_chance))
     args.reverse_chance = max(0.0, min(1.0, args.reverse_chance))
+    args.sound_limit = max(0.0, min(1.0, args.sound_limit))
+    args.volume = min(max(0.0, args.volume), args.sound_limit)
+    if args.reduce_motion:
+        args.no_slide = True
+        args.no_spin = True
+        args.slide_chance = 0.0
+        args.spin_chance = 0.0
+    if args.no_flash:
+        args.no_spin = True
+        args.spin_chance = 0.0
+        args.opacity = min(args.opacity, 0.82)
+    if args.high_contrast:
+        args.opacity = 1.0
+    if not args._profile_loaded:
+        personality = adventure.selected_personality(read_state())
+        if personality is not None:
+            if not any(option == "--formation" or option.startswith("--formation=")
+                       for option in args._raw_options):
+                args.formation = personality.formation
+            if not any(option == "--transpose" or option.startswith("--transpose=")
+                       for option in args._raw_options):
+                args.transpose = personality.transpose
     if args.quiet_hours:
         try:
             schedule.window(args.quiet_hours)
@@ -2240,6 +2657,9 @@ def main(argv: list[str] | None = None) -> int:
     p["image"].mkdir(parents=True, exist_ok=True)
     p["melodies"].mkdir(parents=True, exist_ok=True)
     p.get("events", p["data"] / "events").mkdir(parents=True, exist_ok=True)
+    p.get("choreographies", p["data"] / "choreographies").mkdir(parents=True, exist_ok=True)
+    p.get("packs", p["data"] / "packs").mkdir(parents=True, exist_ok=True)
+    p.get("replays", p["data"] / "replays").mkdir(parents=True, exist_ok=True)
 
     if args.profiles:
         return do_profiles(args)
@@ -2303,6 +2723,50 @@ def main(argv: list[str] | None = None) -> int:
         return do_pack_export(args, args.pack_export[0], args.pack_export[1])
     if args.pack_import:
         return do_pack_import(args, args.pack_import)
+    if args.pack_library:
+        return do_pack_library(args)
+    if args.campaign_choose:
+        return do_campaign_choose(args, args.campaign_choose)
+    if args.campaign:
+        return do_campaign(args)
+    if args.boss_hit is not None:
+        return do_boss_hit(args, args.boss_hit)
+    if args.boss:
+        return do_boss(args)
+    if args.combo:
+        return do_combo(args)
+    if args.invasion is not None:
+        return do_invasion(args, args.invasion)
+    if args.generate_melody:
+        return do_generate_melody(args, args.generate_melody)
+    if args.replay_export:
+        return do_replay_export(args, args.replay_export)
+    if args.choreography_save:
+        return do_choreography_save(args, args.choreography_save)
+    if args.choreography_play:
+        return do_choreography_play(args, args.choreography_play)
+    if args.choreographies:
+        return do_choreographies(args)
+    if args.ritual_add:
+        return do_ritual_add(args, args.ritual_add)
+    if args.ritual_delete:
+        return do_ritual_delete(args, args.ritual_delete)
+    if args.rituals:
+        return do_rituals(args)
+    if args.museum:
+        return do_museum(args)
+    if args.skeleton:
+        return do_skeleton(args, args.skeleton)
+    if args.skeletons:
+        return do_skeletons(args)
+    if args.music_duel:
+        return do_music_duel(args, args.music_duel)
+    if args.music_duels:
+        return do_music_duels(args)
+    if args.riddles:
+        return do_riddles(args)
+    if args.accessibility:
+        return do_accessibility(args)
     if args.melodies:
         return do_melodies(args)
     if args.succes:

@@ -12,6 +12,23 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.26.0] - 2026-09-22
+
+### Ajouté
+- Une campagne à embranchements, un boss saisonnier persistant, les combos et
+  le mode invasion prolongent les apparitions en modes de jeu locaux.
+- Le Choregraphe visuel, Studio Live, les mélodies procédurales et les replays
+  HTML autonomes complètent les outils de création.
+- Les rituels quotidiens, le musée des saisons, quatre personnalités de
+  squelettes et les duels musicaux rejoignent le grimoire et la CLI.
+- Quatre succès secrets à indices progressifs et cinq succès publics portent
+  le cabinet à 32 médailles et 945 points. Chaque médaille possède une
+  illustration originale, les badges secrets restant masqués avant déblocage.
+- Les packs v2 embarquent auteur, description, version de contenu et empreintes
+  SHA-256 vérifiées ; la bibliothèque conserve les archives importées.
+- Les profils acceptent mouvements réduits, flashs réduits, contraste renforcé
+  et plafond sonore.
+
 ## [1.25.0] - 2026-09-22
 
 ### Ajouté
@@ -796,7 +813,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.25.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.26.0...HEAD
+[1.26.0]: https://github.com/boubou666/doot/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/boubou666/doot/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/boubou666/doot/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/boubou666/doot/compare/v1.22.0...v1.23.0
