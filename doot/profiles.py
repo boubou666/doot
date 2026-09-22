@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 
-VERSION = 1
+VERSION = 2
 
 # Options dont le sens survit a un autre lancement. L'ordre sert aussi a
 # produire une sortie stable avec ``doot --profiles``.
@@ -24,7 +24,7 @@ OPTIONS = (
     "spin_chance", "spin_ms", "reverse", "no_reverse", "reverse_chance",
     "screen", "no_sound", "no_pan",
     "event_chance", "event_pity", "no_event", "contagion_chance",
-    "no_contagion", "quiet",
+    "no_contagion", "quiet", "quiet_hours",
 )
 
 _ENTIERS = {
@@ -41,7 +41,7 @@ _BOOLEENS = {
     "reverse", "no_reverse",
     "no_sound", "no_pan", "no_event", "no_contagion", "quiet",
 }
-_TEXTES = {"image", "side", "screen"}
+_TEXTES = {"image", "side", "screen", "quiet_hours"}
 _FORMATIONS = {"random", "canon", "wave", "rain", "vortex", "duel"}
 
 
@@ -81,7 +81,30 @@ def _clean_values(values) -> dict:
 
 
 def empty() -> dict:
-    return {"version": VERSION, "active": None, "profiles": {}}
+    return {"version": VERSION, "active": None, "profiles": {}, "schedules": []}
+
+
+def _clean_schedules(raw, profile_names) -> list[dict]:
+    from . import schedule
+
+    clean = []
+    if not isinstance(raw, list):
+        return clean
+    for item in raw:
+        if not isinstance(item, dict) or item.get("profile") not in profile_names:
+            continue
+        value = item.get("window")
+        try:
+            schedule.window(value)
+        except ValueError:
+            continue
+        days = item.get("days", list(range(7)))
+        if not isinstance(days, list):
+            continue
+        days = sorted({day for day in days if isinstance(day, int) and 0 <= day <= 6})
+        if days:
+            clean.append({"profile": item["profile"], "window": value, "days": days})
+    return clean
 
 
 def read(path: Path) -> dict:
@@ -104,7 +127,12 @@ def read(path: Path) -> dict:
     active = raw.get("active")
     if active not in clean_profiles:
         active = None
-    return {"version": VERSION, "active": active, "profiles": clean_profiles}
+    return {
+        "version": VERSION,
+        "active": active,
+        "profiles": clean_profiles,
+        "schedules": _clean_schedules(raw.get("schedules"), clean_profiles),
+    }
 
 
 def write(path: Path, document: dict) -> None:
@@ -166,7 +194,67 @@ def delete(path: Path, name: str) -> None:
     del document["profiles"][name]
     if document["active"] == name:
         document["active"] = None
+    document["schedules"] = [
+        item for item in document.get("schedules", []) if item.get("profile") != name
+    ]
     write(path, document)
+
+
+_DAY_NAMES = {
+    "lun": 0, "mar": 1, "mer": 2, "jeu": 3, "ven": 4, "sam": 5, "dim": 6,
+    "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6,
+}
+
+
+def parse_days(value: str) -> list[int]:
+    if not value or value.strip() in ("*", "tous", "all"):
+        return list(range(7))
+    days = []
+    for token in value.casefold().split(","):
+        token = token.strip()
+        if token not in _DAY_NAMES:
+            raise ProfileError(f"jour inconnu : {token}")
+        days.append(_DAY_NAMES[token])
+    return sorted(set(days))
+
+
+def schedule_profile(path: Path, name: str, time_window: str, days: str = "*") -> None:
+    from . import schedule
+
+    document = read(path)
+    if name not in document["profiles"]:
+        raise ProfileError(f"profil inconnu : {name}")
+    try:
+        schedule.window(time_window)
+    except ValueError as exc:
+        raise ProfileError(str(exc)) from exc
+    entry = {"profile": name, "window": time_window, "days": parse_days(days)}
+    document["schedules"] = [
+        item for item in document.get("schedules", []) if item.get("profile") != name
+    ] + [entry]
+    write(path, document)
+
+
+def unschedule_profile(path: Path, name: str) -> None:
+    document = read(path)
+    before = len(document.get("schedules", []))
+    document["schedules"] = [
+        item for item in document.get("schedules", []) if item.get("profile") != name
+    ]
+    if len(document["schedules"]) == before:
+        raise ProfileError(f"profil non planifie : {name}")
+    write(path, document)
+
+
+def scheduled(path: Path, now=None) -> str | None:
+    from datetime import datetime
+    from . import schedule
+
+    now = now or datetime.now()
+    for item in read(path).get("schedules", []):
+        if now.weekday() in item["days"] and schedule.contains(item["window"], now):
+            return item["profile"]
+    return None
 
 
 def from_namespace(args) -> dict:

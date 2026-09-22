@@ -40,7 +40,8 @@
 </details>
 
 - **Multiplateforme** : Windows 10/11, macOS, Linux (Arch, Debian/Ubuntu, Fedora, openSUSE…)
-- **Zéro dépendance** : uniquement la bibliothèque standard de Python 3.8+
+- **Cœur léger** : Python 3.8+, le moteur d'overlay fourni, `cryptography`
+  uniquement pour le partage chiffré et un backend de tray optionnel
 - **Discret** : overlay sans bordure, qui ne vole jamais le focus et — sous Windows —
   laisse passer les clics de souris. Il ne bloque rien, il fait juste *doot*.
 - **Multi-écrans** : les moniteurs sont énumérés pour de vrai (Win32, Wayland,
@@ -232,8 +233,9 @@ défilement en forme d'os. Le daemon peut être lancé en arrière-plan : fermer
 grimoire ne l'arrête pas. La GUI utilise Tkinter, déjà requis par l'overlay, et
 n'ajoute donc aucune dépendance. Hors saison, son en-tête devient aussi un
 compte à rebours `J-N` jusqu'au prochain Dooting Time. Le **Compositeur RTTTL**
-s'ouvre dans sa propre fenêtre : grille de 16 pas façon Mario Paint, source
-RTTTL libre, import, écoute automatique après chaque modification et sauvegarde.
+s'ouvre dans sa propre fenêtre : grille de 16 pas et jusqu'à huit voix façon
+Mario Paint, durées variables, source RTTTL libre, import, écoute automatique
+après chaque modification et sauvegarde.
 
 ```bash
 doot                         # lance le daemon (c'est ce que fait le démarrage auto)
@@ -252,6 +254,12 @@ doot --stats                 # le registre : totaux, machines, saison en grille
 doot --carte                 # la carte de la saison, en PNG, quand on veut
 doot --duel-name "Doot Vader"  # choisit ton nom dans le classement partagé
 doot --duel-board            # synchronise et affiche le classement de la saison
+doot --challenge             # le défi quotidien et la série en cours
+doot --history               # les vingt dernières apparitions
+doot --control               # panneau compact : doot, pause, réveil, arrêt
+doot --tray                  # les mêmes gestes dans la zone de notification
+doot --snooze 2h             # endort temporairement la crypte
+doot --fleet-parade          # parade horodatée sur toute la flotte
 doot --profiles              # les profils enregistrés et celui qui est actif
 doot --status                # saison, daemon, son et image utilisés
 doot --stop                  # arrête le daemon
@@ -302,13 +310,89 @@ doot --art                   # imprime le squelette dans le terminal
 | `--ignore-season` | — | ignore la fenêtre saisonnière (tests) |
 | `--quiet` | — | n'écrit que dans le journal |
 
+## 🕰️ La crypte au quotidien
+
+Le daemon peut rester lancé sans interrompre une réunion ou réveiller la maison :
+
+```bash
+doot --snooze 30m                    # pause ponctuelle
+doot --resume                        # réveille immédiatement
+doot --quiet-hours 22:00-07:00       # plage silencieuse, nuit comprise
+doot --control                       # petit panneau de contrôle rapide
+doot --tray                          # véritable menu de zone de notification
+```
+
+Les installeurs tentent de poser le petit backend `pystray`. S'il manque ou si
+la session graphique ne fournit pas de zone de notification, `--tray` se replie
+automatiquement sur `--control` : les commandes restent toutes disponibles.
+
+`--quiet-hours` se sauvegarde dans un profil. Un profil peut aussi s'activer
+automatiquement certains jours ; le daemon relit l'horaire à chaque cycle :
+
+```bash
+doot --save-profile bureau --no-sound --min 3600 --max 7200
+doot --schedule-profile bureau --schedule-window 09:00-18:00 \
+     --schedule-days lun,mar,mer,jeu,ven
+doot --unschedule-profile bureau
+```
+
+Les tirages se personnalisent sans supprimer de fichier :
+
+```bash
+doot --favor-melody rickroll
+doot --disable-melody careless-whisper
+doot --favor-event mimic
+doot --disable-event faux-bug
+doot --enable-event faux-bug           # poids normal
+doot --content                         # récapitulatif
+```
+
+Chaque apparition rejoint un historique JSONL local, limité aux 5 000 dernières
+entrées. `doot --history 50` l'affiche ; l'onglet **Chroniques** de la GUI en
+donne une synthèse et suit le défi quotidien. Les défis sont calculés depuis la
+date, sans serveur, et progressent uniquement après une apparition réellement
+jouée.
+
+## 🎬 Studio, rencontres et packs
+
+Le Compositeur accepte jusqu'à huit voix. Un clic droit sur une note fait
+cycler sa durée, et les boutons de voix permettent copie, collage, ajout,
+suppression et chargement d'un RTTTL éditable.
+
+Une salve réglée dans la CLI ou la GUI peut devenir une rencontre personnelle :
+
+```bash
+doot --event-save bal-des-os --event-title "Le bal des os" \
+     --event-description "Six squelettes traversent la scène." \
+     --burst-max 6 --formation wave --burst-delay 0.12
+doot --event bal-des-os --ignore-season
+```
+
+Les rencontres sont de simples fichiers JSON validés dans `events/`. Elles ne
+peuvent exécuter aucun code. Images, sons, mélodies, rencontres et profils se
+transportent ensemble dans un pack ; les collisions reçoivent `-2`, `-3`, etc. :
+
+```bash
+doot --pack-export "Nuit gothique" ./packs
+doot --pack-import ./packs/Nuit-gothique.dootpack.zip
+```
+
+Enfin, une flotte déjà configurée par `--sync-init` peut préparer une parade
+commune. Le signal chiffré annonce une heure de départ assez loin pour couvrir
+le cycle d'écoute des autres daemons :
+
+```bash
+doot --fleet-parade                     # rencontre parade
+doot --fleet-parade megalovania         # même mélodie sur les postes
+```
+
 ## 🏆 Les succès
 
 Doot garde sa progression **uniquement en local**, dans le même `state.json` que
 le compteur de mélodies (`doot --paths` montre son emplacement). Aucun compte,
 aucune connexion et aucune télémétrie : les apparitions, les salves, les mélodies,
 les bords imposés, les formations, les événements et les profils débloquent
-18 succès pour un total de 475 points.
+23 succès pour un total de 620 points.
 
 ```bash
 doot --achievements     # alias français : doot --succes
@@ -875,10 +959,13 @@ fondu enchaîné autant qu'il faut, puis la finale — le « t » du doot. Sans 
 une blanche serait un toot suivi d'un silence, et un riff de sax deviendrait
 du morse.
 
-Cinq mélodies sont fournies :
+Sept mélodies sont fournies :
 
 - `rickroll`, le refrain de *Never Gonna Give You Up* en la♭ majeur comme le
   disque, avec sa synthé-basse syncopée en seconde voix ;
+- `ballad-of-the-mages`, la première minute de *Ballad of the Mages* de
+  Brentalfloss (0:10–1:13), arrangée à 91 BPM en quatre voix : chant relevé
+  depuis la piste vocale isolée, ukulélé allégé, basse et harmonie ;
 - `spooky-scary-skeletons` — le riff d'intro, les couplets et le pont d'Andrew
   Gold, en si mineur, relevés sur un arrangement piano
   ([Online Sequencer #32991](https://onlinesequencer.net/32991)) : la voix du
@@ -893,6 +980,9 @@ Cinq mélodies sont fournies :
 - `megalovania` (Undertale — un squelette, forcément) : le riff quatre fois,
   puis les deux thèmes **avec leur basse en seconde voix**, relevés sur
   [Online Sequencer #973167](https://onlinesequencer.net/973167) ;
+- `stairway-to-heaven`, l'introduction de Led Zeppelin à 75 BPM, arrangée en
+  **quatre voix synchronisées** : arpège principal, basse chromatique,
+  contrechant de flûte et nappe de cordes ;
 - `this-is-halloween` (L'Étrange Noël de Monsieur Jack) : l'ostinato d'intro,
   le couplet et « This is Halloween » deux fois, relevés sur
   [Online Sequencer #3005280](https://onlinesequencer.net/3005280).
@@ -910,16 +1000,16 @@ de sonneries RTTTL complètes que tu veux, une par ligne, toutes au même tempo.
 
 Si écrire cette syntaxe à la main ne t'amuse pas, ouvre `doot --composer` ou
 choisis **Ouvrir le compositeur RTTTL** dans le grimoire. Sa fenêtre autonome
-offre une grille où chaque colonne représente un seizième de note ; un clic
-pose une hauteur, un autre clic dans la même colonne la remplace, et recliquer
-la même note l'efface. Après une courte pause, chaque changement est rendu et
-joué automatiquement, sans faire surgir l'overlay.
+offre une grille où chaque colonne représente un pas. Une partition peut
+contenir jusqu'à huit voix ; les notes occupent 1, 2, 4 ou 8 pas et une voix se
+copie pour préparer rapidement une harmonie. Après une courte pause, chaque
+changement est rendu et joué automatiquement, sans faire surgir l'overlay.
 
-**Importer…** ouvre directement un `.rtttl`. Une partition simple de seize
-doubles-croches peut rejoindre la grille ; les durées, octaves ou voix plus
-riches restent intactes dans l'éditeur de source, qui accepte tout ce que le
-moteur RTTTL sait jouer. La conversion vers la grille est toujours explicite :
-le compositeur ne raccourcit ni n'aplatit silencieusement un morceau importé.
+**Importer…** ouvre directement un `.rtttl`. Une partition de huit voix au plus
+peut rejoindre la grille ; les sources plus riches restent intactes dans
+l'éditeur libre, qui accepte tout ce que le moteur RTTTL sait jouer. La
+conversion reste explicite : le compositeur ne raccourcit ni n'aplatit
+silencieusement un morceau importé.
 **Enregistrer** met à jour le fichier après confirmation, tandis
 qu'**Enregistrer sous…** crée une copie où tu veux.
 

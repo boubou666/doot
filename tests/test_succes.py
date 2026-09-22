@@ -151,6 +151,10 @@ class EspecesDeStatistiques(unittest.TestCase):
         succes.enregistrer(etat, "melodie", nom="rickroll", voix=2, fournie=True)
         succes.enregistrer(etat, "melodie", nom="maison", voix=1, fournie=False)
         succes.enregistrer(etat, "profil", nom="nuit")
+        succes.enregistrer(etat, "defi", serie=7)
+        succes.enregistrer(etat, "rencontre_perso")
+        succes.enregistrer(etat, "pack")
+        succes.enregistrer(etat, "parade_flotte")
         return set(etat["stats"])
 
     def test_la_table_couvre_ce_qui_est_ecrit(self):

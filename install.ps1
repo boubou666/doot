@@ -203,6 +203,15 @@ if ($LASTEXITCODE -eq 0) {
     Write-Item "              $python -m pip install --target $AppDir 'cryptography>=42'"
 }
 
+# Le controle en zone de notification est optionnel ; sans backend utilisable,
+# `doot --tray` ouvre automatiquement le panneau Tk compact.
+& $python -m pip install --quiet --disable-pip-version-check --target $AppDir "pystray>=0.19.5" "Pillow>=10" 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    Write-Item "barre systeme : pystray"
+} else {
+    Write-Item "barre systeme : panneau compact (pystray indisponible)"
+}
+
 $cmdPath = Join-Path $BinDir 'doot.cmd'
 @"
 @echo off

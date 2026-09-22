@@ -25,9 +25,10 @@ BADGES_DIR = Path(__file__).resolve().parent / "assets" / "success"
 # sans cette table, une fusion fausse les chiffres sans rien signaler.
 TOTAUX = (
     "doots", "declenchements", "canons", "tours_imposes", "evenements",
-    "melodies", "melodies_perso", "rickrolls",
+    "melodies", "melodies_perso", "rickrolls", "defis_termines",
+    "packs_importes", "rencontres_creees", "parades_flotte",
 )
-MAXIMA = ("plus_grande_salve", "voix_max")
+MAXIMA = ("plus_grande_salve", "voix_max", "serie_defis")
 ENSEMBLES = (
     "formations", "bords_imposes", "evenements_vus", "melodies_fournies",
     "jours_actifs", "profils_actifs",
@@ -146,11 +147,26 @@ CATALOGUE = (
            "Assister a un premier evenement rare.",
            15, 1, _valeur("evenements")),
     Succes("collection_evenements", "Cabinet de curiosites",
-           "Assister aux trois evenements rares differents.",
+           "Assister a trois evenements rares differents.",
            40, 3, _nombre_dans_liste("evenements_vus")),
     Succes("profil_actif", "Costume sur mesure",
            "Activer un profil persistant.",
            10, 1, _nombre_dans_liste("profils_actifs")),
+    Succes("defi_du_jour", "Contrat d'outre-tombe",
+           "Terminer un premier defi quotidien.",
+           20, 1, _valeur("defis_termines")),
+    Succes("serie_macabre", "Sept jours sous terre",
+           "Terminer un defi quotidien sept jours de suite.",
+           50, 7, _valeur("serie_defis")),
+    Succes("metteur_en_scene", "Metteur en os",
+           "Creer une rencontre personnalisee.",
+           25, 1, _valeur("rencontres_creees")),
+    Succes("couturier", "Haute couture funeraire",
+           "Importer un pack de contenu doot.",
+           20, 1, _valeur("packs_importes")),
+    Succes("chef_de_flotte", "Chef de flotte",
+           "Lancer une parade synchronisee entre les machines.",
+           30, 1, _valeur("parades_flotte")),
 )
 
 
@@ -266,6 +282,21 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
         nom = details.get("nom")
         if isinstance(nom, str):
             _ajoute_unique(stats, "profils_actifs", nom)
+
+    elif evenement == "defi":
+        _ajoute(stats, "defis_termines", origine)
+        serie = details.get("serie", 0)
+        if isinstance(serie, int) and not isinstance(serie, bool):
+            stats["serie_defis"] = max(_compteur(stats, "serie_defis"), serie)
+
+    elif evenement == "rencontre_perso":
+        _ajoute(stats, "rencontres_creees", origine)
+
+    elif evenement == "pack":
+        _ajoute(stats, "packs_importes", origine)
+
+    elif evenement == "parade_flotte":
+        _ajoute(stats, "parades_flotte", origine)
 
     return _debloquer(etat, maintenant)
 

@@ -10,12 +10,14 @@ import os
 import random
 import sys
 import time
-from datetime import datetime
+import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import (
-    __version__, art, carte, coffre, codex, contagion, duel, image, notification,
-    partage, profiles, registre, season, sound, succes,
+    __version__, art, carte, challenges, coffre, codex, contagion, content, duel,
+    history, image, notification, packs, partage, profiles, registre, schedule,
+    season, sound, succes,
 )
 
 DEFAULT_MIN_SECONDS = 600     # 10 min
@@ -54,11 +56,14 @@ def paths() -> dict[str, Path]:
         "sound": root / "sound",
         "image": root / "image",
         "melodies": root / "melodies",
+        "events": root / "events",
         "wav": root / "doot.wav",
         "log": root / "doot.log",
         "pid": root / "doot.pid",
         "state": root / "state.json",
         "profiles": root / "profiles.json",
+        "content": root / "content.json",
+        "history": root / "history.jsonl",
     }
 
 
@@ -80,6 +85,13 @@ def profiles_path() -> Path:
 
     p = paths()
     return p.get("profiles", p["data"] / "profiles.json")
+
+
+def data_path(key: str, fallback: str) -> Path:
+    """Chemin ajoute recemment, compatible avec les integrations qui remplacent paths()."""
+
+    p = paths()
+    return p.get(key, p["data"] / fallback)
 
 
 # ------------------------------------------------------- instance unique -----
@@ -476,6 +488,41 @@ def note_succes(args, evenement: str, **details) -> None:
 
     etat = read_state()
     nouveaux = succes.enregistrer(etat, evenement, **details)
+    challenge_done = False
+    if evenement == "doots":
+        challenge_done |= challenges.record(
+            etat, "doots", amount=max(0, int(details.get("quantite", 0))),
+        )
+        if int(details.get("quantite", 0)) >= 4:
+            challenge_done |= challenges.record(
+                etat, "formation", formation=str(details.get("formation", "")),
+            )
+        if details.get("rencontre"):
+            challenge_done |= challenges.record(etat, "event")
+        history.append(
+            data_path("history", "history.jsonl"), "doots", count=int(details.get("quantite", 0)),
+            formation=str(details.get("formation", "random")),
+            special=str(details.get("rencontre", "")),
+        )
+    elif evenement == "melodie":
+        challenge_done |= challenges.record(etat, "melodie")
+        history.append(
+            data_path("history", "history.jsonl"), "melody", name=str(details.get("nom", "")),
+            voices=int(details.get("voix", 1)),
+        )
+    elif evenement == "pack":
+        history.append(data_path("history", "history.jsonl"), "pack", pack=str(details.get("nom", "")))
+    elif evenement == "rencontre_perso":
+        history.append(data_path("history", "history.jsonl"), "custom-event", name=str(details.get("nom", "")))
+    elif evenement == "parade_flotte":
+        history.append(data_path("history", "history.jsonl"), "fleet-parade", name=str(details.get("nom", "")))
+    if challenge_done:
+        nouveaux.extend(succes.enregistrer(
+            etat, "defi", serie=int(etat.get("challenge_streak", 0)),
+        ))
+        history.append(
+            data_path("history", "history.jsonl"), "challenge", challenge=challenges.daily().identifiant,
+        )
     write_state(etat)
     annoncer_succes(args, nouveaux)
 
@@ -584,7 +631,9 @@ def melody_roll(args, rng=random):
     depuis = state_compteur(read_state(), "depuis_melodie")
     if not melody_due(depuis, args.melody_chance, args.melody_pity, rng):
         return None
-    return rng.choice(pool)
+    return content.choose(
+        pool, content.read(data_path("content", "content.json")), "melodies", lambda path: path.stem, rng,
+    )
 
 
 def event_due(depuis: int, chance: float, pity: int, rng=random) -> bool:
@@ -605,7 +654,14 @@ def event_roll(args, rng=random):
     depuis = state_compteur(read_state(), "depuis_evenement")
     if not event_due(depuis, args.event_chance, args.event_pity, rng):
         return None
-    return rng.choice(evenements.tirables())
+    pool = tuple(
+        event for event in evenements.all_events(data_path("events", "events"))
+        if event.tirable
+    )
+    return content.choose(
+        pool, content.read(data_path("content", "content.json")), "events",
+        lambda event: event.identifiant, rng,
+    )
 
 
 def rite_du_soir(args):
@@ -717,7 +773,7 @@ def do_event(args, wanted: str) -> int:
         print(f"doot : {season.describe()}")
         print(f"Saison : {season.SEASON_LABEL}. (--ignore-season pour forcer un test.)")
         return 3
-    evenement = evenements.find(wanted)
+    evenement = evenements.find(wanted, data_path("events", "events"))
     if evenement is None:
         print(f"doot : evenement inconnu '{wanted}' (doot --events pour la liste)")
         return 2
@@ -729,9 +785,142 @@ def do_events(args) -> int:
     from . import evenements
 
     print("Evenements rares :")
-    for evenement in evenements.CATALOGUE:
+    for evenement in evenements.all_events(data_path("events", "events")):
         print(f"  {evenement.identifiant:<10} {evenement.titre} - {evenement.description}")
     print("\nEssayer : doot --event NOM --ignore-season")
+    return 0
+
+
+def do_save_event(args, name: str) -> int:
+    from . import evenements
+
+    try:
+        path = evenements.save(
+            data_path("events", "events"), name, args.event_title or name,
+            args.event_description or "Rencontre composee dans le Studio macabre.",
+            formation=args.formation, count=args.burst_max,
+            delay=args.burst_delay, duration=args.duration or DEFAULT_DURATION,
+        )
+    except (OSError, ValueError) as exc:
+        print(f"doot : rencontre impossible : {exc}")
+        return 2
+    note_succes(args, "rencontre_perso", nom=path.stem)
+    print(f"doot : rencontre sauvegardee -> {path}")
+    print(f"Essayer : doot --event {path.stem} --ignore-season")
+    return 0
+
+
+def do_content(args) -> int:
+    document = content.read(data_path("content", "content.json"))
+    print("Preferences de contenu (1 = normal, 0 = desactive) :")
+    for kind in content.KINDS:
+        print(f"  {kind}:")
+        values = document[kind]
+        if not values:
+            print("    toutes au poids normal")
+        for name, weight in sorted(values.items()):
+            print(f"    {name:<28} {weight:g}")
+    return 0
+
+
+def do_set_content(args, kind: str, name: str, weight: float) -> int:
+    try:
+        value = content.set_weight(data_path("content", "content.json"), kind, name, weight)
+    except (OSError, ValueError) as exc:
+        print(f"doot : preference impossible : {exc}")
+        return 2
+    label = "desactive" if value == 0 else "normal" if value == 1 else f"favorise x{value:g}"
+    print(f"doot : {name} -> {label}")
+    return 0
+
+
+def do_history(args) -> int:
+    entries = history.read(data_path("history", "history.jsonl"), args.history)
+    print(f"Historique des apparitions ({len(entries)} derniere(s)) :")
+    if not entries:
+        print("  aucune apparition enregistree")
+        return 0
+    for entry in entries:
+        details = [f"{key}={value}" for key, value in entry.items()
+                   if key not in ("at", "kind") and value not in ("", None)]
+        suffix = " - " + ", ".join(details) if details else ""
+        print(f"  {entry.get('at', '?')}  {entry['kind']}{suffix}")
+    return 0
+
+
+def do_challenge(args) -> int:
+    etat = read_state()
+    state = challenges.status(etat)
+    write_state(etat)
+    challenge = challenges.daily()
+    marker = "TERMINE" if state["completed"] else f"{state['progress']}/{challenge.target}"
+    print(f"Defi du jour : {challenge.title}")
+    print(f"  progression : {marker}")
+    print(f"  serie       : {int(etat.get('challenge_streak', 0))} jour(s)")
+    return 0
+
+
+def do_pack_export(args, name: str, destination: str) -> int:
+    try:
+        path = packs.export(paths()["data"], Path(destination).expanduser(), name)
+    except (OSError, ValueError) as exc:
+        print(f"doot : export du pack impossible : {exc}")
+        return 2
+    print(f"doot : pack exporte -> {path}")
+    return 0
+
+
+def do_pack_import(args, source: str) -> int:
+    try:
+        name, installed = packs.install(Path(source).expanduser(), paths()["data"])
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        print(f"doot : import du pack impossible : {exc}")
+        return 2
+    note_succes(args, "pack", nom=name)
+    print(f"doot : pack '{name}' importe ({len(installed)} fichier(s)).")
+    return 0
+
+
+def do_snooze(args, value: str) -> int:
+    try:
+        until = schedule.duration(value)
+    except ValueError as exc:
+        print(f"doot : {exc}")
+        return 2
+    etat = read_state()
+    etat["snooze_until"] = until.isoformat(timespec="seconds")
+    write_state(etat)
+    print(f"doot : la crypte dort jusqu'au {until:%d/%m/%Y a %H:%M}.")
+    return 0
+
+
+def do_resume(args) -> int:
+    etat = read_state()
+    etat.pop("snooze_until", None)
+    write_state(etat)
+    print("doot : la crypte est reveillee.")
+    return 0
+
+
+def do_schedule_profile(args, name: str) -> int:
+    try:
+        profiles.schedule_profile(
+            profiles_path(), name, args.schedule_window, args.schedule_days,
+        )
+    except profiles.ProfileError as exc:
+        print(f"doot : {exc}")
+        return 2
+    print(f"doot : profil '{name}' planifie {args.schedule_window} ({args.schedule_days}).")
+    return 0
+
+
+def do_unschedule_profile(args, name: str) -> int:
+    try:
+        profiles.unschedule_profile(profiles_path(), name)
+    except profiles.ProfileError as exc:
+        print(f"doot : {exc}")
+        return 2
+    print(f"doot : planification de '{name}' retiree.")
     return 0
 
 
@@ -952,6 +1141,35 @@ def contagion_configuree(args, signal: dict):
     return configured
 
 
+def emit_parade_contagieuse(args, signal: dict, journal: bool = True) -> bool:
+    """Attend l'heure commune puis joue la melodie ou la parade de repli."""
+
+    try:
+        instant = datetime.fromisoformat(signal["execute_at"].replace("Z", "+00:00"))
+        delay = (instant.astimezone(timezone.utc) - _utc_now()).total_seconds()
+        if delay > 0:
+            time.sleep(min(CONTAGION_POLL_SECONDS + 10.0, delay))
+    except (KeyError, AttributeError, TypeError, ValueError):
+        pass
+
+    if journal:
+        log(f"PARADE DE FLOTTE : signal recu de {signal.get('source', '?')}.",
+            quiet=args.quiet)
+    name = str(signal.get("name", ""))
+    if name and not args.no_melody:
+        path = melodie_locale(name)
+        if path is not None:
+            return emit_melodie_tiree(args, path, journal=journal)
+
+    if args.no_event:
+        return emit_doots(contagion_configuree(args, signal), journal=journal,
+                          evenement="contagion") > 0
+    from . import evenements
+
+    event = evenements.find("parade", data_path("events", "events"))
+    return bool(event and emit_evenement(args, event, journal=journal))
+
+
 def emit_contagion(args, signal: dict, journal: bool = True) -> bool:
     """Fait surgir ici ce qu'une autre machine vient de jouer chez elle.
 
@@ -964,11 +1182,14 @@ def emit_contagion(args, signal: dict, journal: bool = True) -> bool:
     """
     from . import evenements
 
+    if signal.get("kind") == "parade":
+        return emit_parade_contagieuse(args, signal, journal=journal)
+
     genre, nom = contagion.charge(signal)
     source = signal.get("source", "une autre machine")
 
     if genre == "evenement" and not args.no_event:
-        evenement = evenements.find(nom)
+        evenement = evenements.find(nom, data_path("events", "events"))
         if evenement is not None:
             if journal:
                 log(f"DOOT CONTAGIEUX : {source} a vu {evenement.titre}.",
@@ -993,6 +1214,40 @@ def emit_contagion(args, signal: dict, journal: bool = True) -> bool:
         log(f"DOOT CONTAGIEUX : signal recu de {source}.", quiet=args.quiet)
     return emit_doots(contagion_configuree(args, signal), journal=journal,
                       evenement="contagion") > 0
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def do_fleet_parade(args, name: str) -> int:
+    """Publie une apparition horodatee puis la joue localement au meme instant."""
+
+    if not args.ignore_season and not season.in_season():
+        print(f"doot : {season.describe()}")
+        return 3
+    if not partage.reglage(paths()["data"]).get("cle"):
+        print("doot : ouvre d'abord un partage avec --sync-init.")
+        return 2
+    now = _utc_now()
+    # Le daemon distant relit la crypte toutes les trente secondes : cinq
+    # secondes de marge apres ce tour garantissent qu'il voie le signal avant
+    # le depart, au lieu de jouer une parade simplement "a peu pres" ensemble.
+    execute_at = now + timedelta(seconds=CONTAGION_POLL_SECONDS + 5)
+    etat = read_state()
+    signal = contagion.creer(
+        succes.machine(etat), now=now, kind="parade", name=name,
+        execute_at=execute_at,
+    )
+    etat["contagion_sortante"] = signal
+    write_state(etat)
+    sync_tour(args)
+    note_succes(args, "parade_flotte", nom=name or "parade")
+    print(f"doot : parade publiee, depart synchronise a {execute_at.astimezone():%H:%M:%S}.")
+    delay = (execute_at - _utc_now()).total_seconds()
+    if delay > 0:
+        time.sleep(delay)
+    return 0 if emit_contagion(args, signal, journal=True) else 1
 
 
 def jouer_contagions(args, signaux: list[dict]) -> int:
@@ -1326,6 +1581,10 @@ def do_profiles(args) -> int:
             details.append(f"intervalle={values['min']}-{values['max']}s")
         if "event_chance" in values:
             details.append(f"evenements={values['event_chance']:.1%}")
+        schedules = [item for item in document.get("schedules", [])
+                     if item.get("profile") == name]
+        if schedules:
+            details.append("horaire=" + ",".join(item["window"] for item in schedules))
         suffix = f"  ({', '.join(details)})" if details else ""
         print(f" {marker} {name}{suffix}")
     print("\n* profil actif, charge automatiquement par le daemon")
@@ -1380,6 +1639,19 @@ def sans_affichage() -> bool:
     return not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
 
+def _apply_profile_schedule(args, base: dict) -> str | None:
+    """Applique le profil de l'horaire courant, ou restaure la configuration de base."""
+
+    selected = profiles.scheduled(profiles_path())
+    for key, value in base.items():
+        setattr(args, key, value)
+    if selected:
+        for key, value in profiles.load(profiles_path(), selected).items():
+            setattr(args, key, value)
+    args._scheduled_profile = selected
+    return selected
+
+
 def do_daemon(args) -> int:
     from . import window
 
@@ -1413,8 +1685,25 @@ def do_daemon(args) -> int:
     )
     log("pour tout arreter : doot --stop  (desinstaller : voir le README)", quiet=args.quiet)
 
+    base_settings = profiles.from_namespace(args)
+    announced_pause = None
     try:
         while True:
+            scheduled_profile = _apply_profile_schedule(args, base_settings)
+            etat = read_state()
+            paused_reason = None
+            if schedule.snoozed(etat):
+                paused_reason = f"snooze jusqu'a {etat.get('snooze_until')}"
+            elif schedule.contains(getattr(args, "quiet_hours", "")):
+                paused_reason = f"heures silencieuses {args.quiet_hours}"
+            if paused_reason:
+                if announced_pause != paused_reason:
+                    extra = f" (profil {scheduled_profile})" if scheduled_profile else ""
+                    log(f"crypte en pause : {paused_reason}{extra}.", quiet=args.quiet)
+                    announced_pause = paused_reason
+                time.sleep(60)
+                continue
+            announced_pause = None
             if not args.ignore_season and not season.in_season():
                 wait = min(OUT_OF_SEASON_POLL, max(60.0, season.seconds_until_next_season()))
                 log(season.describe(), quiet=args.quiet)
@@ -1483,6 +1772,16 @@ def do_status(args) -> int:
           f"{succes.score(etat)} points")
     codex_vus, codex_total = codex.progression(etat)
     print(f"  codex       : {codex_vus}/{codex_total} apparitions decouvertes")
+    challenge = challenges.daily()
+    challenge_state = challenges.status(etat)
+    challenge_progress = "termine" if challenge_state["completed"] else \
+        f"{challenge_state['progress']}/{challenge.target}"
+    print(f"  defi        : {challenge.title} ({challenge_progress})")
+    if schedule.snoozed(etat):
+        print(f"  sommeil     : jusqu'a {etat.get('snooze_until')}")
+    elif args.quiet_hours:
+        active = " (actif)" if schedule.contains(args.quiet_hours) else ""
+        print(f"  silence     : {args.quiet_hours}{active}")
 
     sounds = sound.custom_sounds(p["sound"])
     if sounds:
@@ -1623,6 +1922,10 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                         help="ouvre le grimoire graphique de toutes les commandes")
     parser.add_argument("--composer", action="store_true",
                         help="ouvre la page autonome de composition et d'edition RTTTL")
+    parser.add_argument("--control", action="store_true",
+                        help="ouvre le panneau compact de controle rapide")
+    parser.add_argument("--tray", action="store_true",
+                        help="place le controle rapide dans la zone de notification")
 
     parser.add_argument("--once", action="store_true", help="affiche un doot tout de suite puis quitte")
     parser.add_argument("--play", default=None, metavar="MELODIE",
@@ -1671,6 +1974,35 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                         help="liste les rencontres rares et leur commande d'essai")
     parser.add_argument("--event", default=None, metavar="NOM",
                         help="force une rencontre rare (voir --events), puis quitte")
+    parser.add_argument("--event-save", default=None, metavar="NOM",
+                        help="sauvegarde les reglages de salve comme rencontre personnelle")
+    parser.add_argument("--event-title", default="", metavar="TITRE",
+                        help="titre de la rencontre enregistree par --event-save")
+    parser.add_argument("--event-description", default="", metavar="TEXTE",
+                        help="description de la rencontre enregistree par --event-save")
+    parser.add_argument("--history", nargs="?", const=20, type=int, default=None, metavar="N",
+                        help="affiche les N dernieres apparitions (defaut 20)")
+    parser.add_argument("--challenge", action="store_true",
+                        help="affiche le defi quotidien et sa progression")
+    parser.add_argument("--content", action="store_true",
+                        help="affiche les melodies et rencontres favorisees ou masquees")
+    parser.add_argument("--favor-melody", default=None, metavar="NOM")
+    parser.add_argument("--disable-melody", default=None, metavar="NOM")
+    parser.add_argument("--enable-melody", default=None, metavar="NOM")
+    parser.add_argument("--favor-event", default=None, metavar="NOM")
+    parser.add_argument("--disable-event", default=None, metavar="NOM")
+    parser.add_argument("--enable-event", default=None, metavar="NOM")
+    parser.add_argument("--pack-export", nargs=2, default=None, metavar=("NOM", "DESTINATION"),
+                        help="exporte les contenus personnels dans un pack ZIP")
+    parser.add_argument("--pack-import", default=None, metavar="FICHIER",
+                        help="importe un pack doot sans ecraser les contenus existants")
+    parser.add_argument("--fleet-parade", nargs="?", const="", default=None,
+                        metavar="MELODIE",
+                        help="lance une parade horodatee sur toute la flotte partagee")
+    parser.add_argument("--snooze", default=None, metavar="DUREE",
+                        help="endort le daemon pour 30m, 2h ou 1d")
+    parser.add_argument("--resume", action="store_true",
+                        help="annule la mise en sommeil du daemon")
     parser.add_argument("--duel-board", action="store_true",
                         help="actualise et affiche le classement saisonnier partage")
     parser.add_argument("--duel-name", default=None, metavar="NOM",
@@ -1703,6 +2035,14 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                          help="ne charge plus de profil automatiquement")
     gestion.add_argument("--delete-profile", default=None, metavar="NOM",
                          help="supprime un profil persistant")
+    gestion.add_argument("--schedule-profile", default=None, metavar="NOM",
+                         help="active un profil sur une plage horaire")
+    gestion.add_argument("--unschedule-profile", default=None, metavar="NOM",
+                         help="retire la planification d'un profil")
+    parser.add_argument("--schedule-window", default="", metavar="HH:MM-HH:MM",
+                        help="plage de --schedule-profile")
+    parser.add_argument("--schedule-days", default="*", metavar="JOURS",
+                        help="jours de --schedule-profile : lun,mar,... ou *")
 
     parser.add_argument("--min", type=int, default=DEFAULT_MIN_SECONDS,
                         help=f"delai minimum entre deux doot, en secondes (defaut {DEFAULT_MIN_SECONDS})")
@@ -1800,6 +2140,8 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
     parser.add_argument("--ignore-season", action="store_true",
                         help="ignore la fenetre 1er sept - 31 oct (tests uniquement)")
     parser.add_argument("--quiet", action="store_true", help="n'ecrit que dans le journal")
+    parser.add_argument("--quiet-hours", default="", metavar="HH:MM-HH:MM",
+                        help="suspend les apparitions pendant cette plage, y compris la nuit")
     if profile_defaults:
         parser.set_defaults(**profile_defaults)
     return parser
@@ -1815,6 +2157,9 @@ def parse_args(argv: list[str] | None = None):
     selection.add_argument("--no-profile", action="store_true")
     known, _unknown = probe.parse_known_args(raw)
 
+    # Les horaires sont appliques dynamiquement par la boucle du daemon. Les
+    # charger ici ferait du profil planifie la "base" et empecherait de revenir
+    # au profil actif quand sa plage se termine.
     selected = None if known.no_profile else (known.profile or profiles.active(profiles_path()))
     defaults = None
     if selected:
@@ -1859,6 +2204,14 @@ def main(argv: list[str] | None = None) -> int:
         from . import composer_gui
 
         return composer_gui.main()
+    if args.control:
+        from . import gui
+
+        return gui.main(compact=True)
+    if args.tray:
+        from . import tray
+
+        return tray.main()
 
     if args.min < 1:
         args.min = 1
@@ -1874,12 +2227,19 @@ def main(argv: list[str] | None = None) -> int:
     args.event_pity = max(0, args.event_pity)
     args.contagion_chance = max(0.0, min(1.0, args.contagion_chance))
     args.reverse_chance = max(0.0, min(1.0, args.reverse_chance))
+    if args.quiet_hours:
+        try:
+            schedule.window(args.quiet_hours)
+        except ValueError as exc:
+            print(f"doot : {exc}")
+            return 2
 
     p = paths()
     p["data"].mkdir(parents=True, exist_ok=True)
     p["sound"].mkdir(parents=True, exist_ok=True)
     p["image"].mkdir(parents=True, exist_ok=True)
     p["melodies"].mkdir(parents=True, exist_ok=True)
+    p.get("events", p["data"] / "events").mkdir(parents=True, exist_ok=True)
 
     if args.profiles:
         return do_profiles(args)
@@ -1891,6 +2251,13 @@ def main(argv: list[str] | None = None) -> int:
         return do_deactivate_profile(args)
     if args.delete_profile:
         return do_delete_profile(args, args.delete_profile)
+    if args.schedule_profile:
+        if not args.schedule_window:
+            print("doot : --schedule-window est requis avec --schedule-profile")
+            return 2
+        return do_schedule_profile(args, args.schedule_profile)
+    if args.unschedule_profile:
+        return do_unschedule_profile(args, args.unschedule_profile)
 
     if args.regen_sound:
         sound.ensure_wav(p["wav"], args.volume, force=True)
@@ -1910,6 +2277,32 @@ def main(argv: list[str] | None = None) -> int:
         return do_stop(args)
     if args.art:
         return do_art(args)
+    if args.snooze is not None:
+        return do_snooze(args, args.snooze)
+    if args.resume:
+        return do_resume(args)
+    if args.history is not None:
+        return do_history(args)
+    if args.challenge:
+        return do_challenge(args)
+    if args.content:
+        return do_content(args)
+    if args.favor_melody:
+        return do_set_content(args, "melodies", args.favor_melody, 3)
+    if args.disable_melody:
+        return do_set_content(args, "melodies", args.disable_melody, 0)
+    if args.enable_melody:
+        return do_set_content(args, "melodies", args.enable_melody, 1)
+    if args.favor_event:
+        return do_set_content(args, "events", args.favor_event, 3)
+    if args.disable_event:
+        return do_set_content(args, "events", args.disable_event, 0)
+    if args.enable_event:
+        return do_set_content(args, "events", args.enable_event, 1)
+    if args.pack_export:
+        return do_pack_export(args, args.pack_export[0], args.pack_export[1])
+    if args.pack_import:
+        return do_pack_import(args, args.pack_import)
     if args.melodies:
         return do_melodies(args)
     if args.succes:
@@ -1934,6 +2327,10 @@ def main(argv: list[str] | None = None) -> int:
         return do_fusionner(args, args.fusionner)
     if args.events:
         return do_events(args)
+    if args.event_save:
+        return do_save_event(args, args.event_save)
+    if args.fleet_parade is not None:
+        return do_fleet_parade(args, args.fleet_parade)
 
     try:
         if args.event:

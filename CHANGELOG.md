@@ -12,6 +12,24 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.25.0] - 2026-09-22
+
+### Ajouté
+- Le **Studio macabre** passe à huit voix, accepte des notes longues, copie et
+  colle une voix et recharge ses partitions RTTTL. Les réglages de salve
+  peuvent également être enregistrés comme rencontre personnelle déclarative.
+- `--quiet-hours`, `--snooze` et `--resume` maîtrisent les heures calmes ; les
+  profils peuvent être planifiés par plage et jours de semaine. `--control`
+  ouvre un panneau compact et `--tray` l'installe dans la zone de notification.
+- Un historique JSONL borné alimente l'onglet **Chroniques**, les statistiques
+  récentes et un défi quotidien déterministe avec séries de jours.
+- Les mélodies et rencontres peuvent être favorisées, masquées puis réactivées.
+  Des packs ZIP sûrs transportent images, sons, mélodies, rencontres et profils
+  sans écraser l'existant.
+- `--fleet-parade` programme une apparition commune horodatée sur la flotte
+  chiffrée. Cinq succès illustrés récompensent les défis, le Studio, les packs
+  et les parades ; le cabinet atteint 23 succès et 620 points.
+
 ## [1.24.0] - 2026-09-22
 
 ### Ajouté
@@ -778,7 +796,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.24.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.25.0...HEAD
+[1.25.0]: https://github.com/boubou666/doot/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/boubou666/doot/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/boubou666/doot/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/boubou666/doot/compare/v1.20.0...v1.22.0
