@@ -28,6 +28,8 @@ TOTAUX = (
     "melodies", "melodies_perso", "rickrolls", "defis_termines",
     "packs_importes", "rencontres_creees", "parades_flotte", "boss_vaincus",
     "campagnes_terminees", "invasions_terminees", "replays_exportes", "takes_live",
+    "expeditions_terminees", "familiers_evolues", "contrats_termines", "samples_dj",
+    "chasses_codes", "new_game_plus", "sessions_coop", "nuits_infinies",
 )
 MAXIMA = ("plus_grande_salve", "voix_max", "serie_defis")
 ENSEMBLES = (
@@ -202,6 +204,31 @@ CATALOGUE = (
            "Completer le choeur impossible.", 40, 1,
            _contient("enigmes_resolues", "huitieme_voix"), True,
            ("Un choeur garde une place vide.", "Compte les pattes de l'araignee.")),
+    Succes("explorateur_astral", "Explorateur astral",
+           "Terminer une expedition de sept salles.", 35, 1,
+           _valeur("expeditions_terminees")),
+    Succes("ami_spectral", "Ami spectral",
+           "Faire evoluer un familier au niveau 2.", 20, 1,
+           _valeur("familiers_evolues")),
+    Succes("pacte_flotte", "Le pacte de la flotte",
+           "Achever un contrat communautaire.", 30, 1,
+           _valeur("contrats_termines")),
+    Succes("doot_dj", "Doot DJ",
+           "Decouper un sample dans le studio DJ.", 20, 1,
+           _valeur("samples_dj")),
+    Succes("cryptographe", "Cryptographe de l'ombre",
+           "Retrouver les cinq codes caches dans la crypte.", 50, 1,
+           _valeur("chasses_codes"), True,
+           ("Cinq mots dorment entre les systemes.", "Ecoute les indices de la chasse.")),
+    Succes("retour_crypte", "La crypte se souvient",
+           "Commencer une Nouvelle Partie +.", 30, 1,
+           _valeur("new_game_plus")),
+    Succes("duo_osseux", "Duo osseux",
+           "Atteindre quatre accords en coop locale.", 25, 1,
+           _valeur("sessions_coop")),
+    Succes("nuit_sans_fin", "L'aube impossible",
+           "Traverser les six actes de la Nuit infinie.", 50, 1,
+           _valeur("nuits_infinies")),
 )
 
 
@@ -359,6 +386,37 @@ def enregistrer(etat: dict, evenement: str, maintenant: datetime | None = None,
         nom = details.get("nom")
         if isinstance(nom, str):
             _ajoute_unique(stats, "enigmes_resolues", nom)
+
+    elif evenement == "expedition":
+        if details.get("completed") is True:
+            _ajoute(stats, "expeditions_terminees", origine)
+
+    elif evenement == "familiar":
+        if entier(details.get("level")) >= 2:
+            _ajoute(stats, "familiers_evolues", origine)
+
+    elif evenement == "contract":
+        if details.get("completed") is True:
+            _ajoute(stats, "contrats_termines", origine)
+
+    elif evenement == "dj":
+        if details.get("imported") is True:
+            _ajoute(stats, "samples_dj", origine)
+
+    elif evenement == "code_hunt":
+        if details.get("completed") is True:
+            _ajoute(stats, "chasses_codes", origine)
+
+    elif evenement == "new_game_plus":
+        _ajoute(stats, "new_game_plus", origine)
+
+    elif evenement == "coop":
+        if entier(details.get("score")) >= 4:
+            _ajoute(stats, "sessions_coop", origine)
+
+    elif evenement == "nuit_infinie":
+        if details.get("completed") is True:
+            _ajoute(stats, "nuits_infinies", origine)
 
     return _debloquer(etat, maintenant)
 

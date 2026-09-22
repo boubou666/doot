@@ -416,13 +416,63 @@ paliers, mais leur titre, leurs points et leur badge personnel restent cachés
 jusqu'à la résolution. Ils peuvent être liés à une heure, une mise en scène, un
 chemin de campagne ou une partition inhabituelle.
 
+## 🌌 Expéditions et Nuit infinie
+
+La troisième vague relie tous les systèmes dans de nouvelles boucles courtes.
+Une expédition produit sept salles reproductibles à partir d'une graine ; les
+choix prudents limitent le danger, les choix audacieux rapportent davantage de
+reliques. Le boss possède désormais trois phases, annonce son attaque et subit
+un contre rythmique doublé quand la bonne formation est jouée.
+
+```bash
+doot --expedition treize                # nouvelle route partageable
+doot --expedition-choose audace         # avance d'une salle
+doot --boss                             # phase, attaque et contre attendu
+doot --boss-hit 20 --formation vortex  # contre rythmique possible
+doot --night-infinite                  # événement final en six actes
+```
+
+Deux outils visuels s'exportent en HTML autonome : l'éditeur de campagnes crée
+des chapitres, dialogues, choix et fins multiples, tandis que la constellation
+transforme les succès en carte d'étoiles interactive. Une campagne créée peut
+être emballée en pack déclaratif.
+
+```bash
+doot --campaign-editor ./campaign-editor.html
+doot --campaign-pack campagne-doot.json ./packs
+doot --constellation ./constellation.html
+```
+
+Les autres nouveautés restent elles aussi locales et portables :
+
+```bash
+doot --familiars                       # quatre compagnons évolutifs
+doot --familiar-bond expedition
+doot --contract                        # objectif quotidien de flotte
+doot --contract-share ./pacte          # capsule chiffrée et authentifiée
+doot --contract-join ./pacte/contract-2026-09-22.dootcontract
+doot --dj-import sample.wav --dj-slices 8
+doot --ambient-mode oled               # bougies, orage, lune ou OLED
+doot --replay-gif ./replays            # animation GIF sans dépendance vidéo
+doot --code-hunt                       # cinq codes cachés dans les systèmes
+doot --new-game-plus                   # progression et musée conservés
+doot --character "Lord Femur" --character-costume smoking
+doot --radio                           # programmation automatique
+doot --coop start                      # musique et scène en alternance
+```
+
+Les contrats utilisent une capsule chiffrée ; aucun compte ni serveur central
+n'est requis. Le Studio de personnages exporte des packs, Doot DJ conserve les
+points de découpe du WAV et la Radio Crypte génère la même programmation pour
+une même graine.
+
 ## 🏆 Les succès
 
 Doot garde sa progression **uniquement en local**, dans le même `state.json` que
 le compteur de mélodies (`doot --paths` montre son emplacement). Aucun compte,
 aucune connexion et aucune télémétrie : les apparitions, les salves, les mélodies,
 les bords imposés, les formations, les événements et les profils débloquent
-32 succès pour un total de 945 points.
+40 succès pour un total de 1 205 points.
 
 ```bash
 doot --achievements     # alias français : doot --succes
