@@ -19,7 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from . import composer, registre, season, succes
+from . import registre, season, succes
 
 
 ASSETS_DIR = Path(__file__).with_name("assets")
@@ -167,6 +167,11 @@ COMMANDS: tuple[CommandSpec, ...] = (
         "melodies", "Voir les melodies",
         "Liste les melodies personnelles et celles fournies avec doot.",
         ("--melodies",), image="success/jukebox_macabre.png",
+    ),
+    CommandSpec(
+        "composer", "Ouvrir le compositeur RTTTL",
+        "Ouvre sa propre page avec grille, import et apercu audio automatique.",
+        ("--composer",), image="success/maestro.png", detached=True,
     ),
     CommandSpec(
         "events", "Voir les rencontres",
@@ -592,9 +597,6 @@ class DootApp:
         self.processes: list[subprocess.Popen] = []
         self.wheel_canvases: list[object] = []
         self.wheel_bindings_installed = False
-        self.composer_pattern = composer.empty_pattern()
-        self.composer_cells: dict[tuple[int, str], object] = {}
-
         root.title("doot — grimoire de commandes")
         root.geometry("1180x860")
         root.minsize(940, 700)
@@ -779,12 +781,10 @@ class DootApp:
         notebook = self.ttk.Notebook(parent)
         notebook.grid(row=2, column=0, sticky="nsew", padx=22, pady=(0, 10))
         options_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
-        composer_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         achievements_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         registre_tab = self.tk.Frame(notebook, bg=self.PANEL_2)
         output_tab = self.tk.Frame(notebook, bg="#0b0910")
         notebook.add(options_tab, text="  Reglages  ")
-        notebook.add(composer_tab, text="  Compositeur  ")
         notebook.add(achievements_tab, text="  Succes  ")
         notebook.add(registre_tab, text="  Registre  ")
         notebook.add(output_tab, text="  Sortie  ")
@@ -793,7 +793,6 @@ class DootApp:
         self.registre_tab = registre_tab
         self.output_tab = output_tab
         self._build_settings(options_tab)
-        self._build_composer(composer_tab)
         self._build_achievements(achievements_tab)
         self._build_registre(registre_tab)
         self._build_output(output_tab)
@@ -866,152 +865,6 @@ class DootApp:
             self.tk.Frame(holder, bg="#30233c", height=1).pack(
                 fill="x", padx=16, pady=(2 if index < len(self.settings) - 1 else 12, 0),
             )
-
-    def _build_composer(self, parent) -> None:
-        """Grille a la Mario Paint : une hauteur possible par pas."""
-        toolbar = self.tk.Frame(parent, bg=self.PANEL_2)
-        toolbar.pack(fill="x", padx=14, pady=(12, 8))
-
-        self.composer_title = self.tk.StringVar(value="ma-melodie")
-        self.composer_tempo = self.tk.StringVar(value="120")
-        self.composer_octave = self.tk.StringVar(value="5")
-        for label, variable, width in (
-            ("Nom", self.composer_title, 20),
-            ("BPM", self.composer_tempo, 7),
-        ):
-            self.tk.Label(
-                toolbar, text=label, bg=self.PANEL_2, fg=self.GOLD_LIGHT,
-                font=("Segoe UI", 9, "bold"),
-            ).pack(side="left", padx=(0, 5))
-            self.ttk.Entry(toolbar, textvariable=variable, width=width).pack(
-                side="left", padx=(0, 12),
-            )
-        self.tk.Label(
-            toolbar, text="Octave", bg=self.PANEL_2, fg=self.GOLD_LIGHT,
-            font=("Segoe UI", 9, "bold"),
-        ).pack(side="left", padx=(0, 5))
-        self.ttk.Combobox(
-            toolbar, textvariable=self.composer_octave,
-            values=tuple(str(value) for value in range(3, 8)),
-            state="readonly", width=4,
-        ).pack(side="left")
-        self.ttk.Button(
-            toolbar, text="Effacer", style="Clear.TButton",
-            command=self._composer_clear,
-        ).pack(side="right")
-
-        grid = self.tk.Frame(parent, bg=self.PANEL_2)
-        grid.pack(fill="both", expand=True, padx=14, pady=(0, 8))
-        self.tk.Label(
-            grid, text="NOTE", bg=self.PANEL_2, fg=self.MUTED,
-            font=("Consolas", 8, "bold"), width=6,
-        ).grid(row=0, column=0, padx=(0, 4), pady=(0, 3))
-        for step in range(composer.STEPS):
-            self.tk.Label(
-                grid, text=str(step + 1), bg=self.PANEL_2,
-                fg=self.GOLD if step % 4 == 0 else self.MUTED,
-                font=("Consolas", 8, "bold"), width=2,
-            ).grid(row=0, column=step + 1, padx=1, pady=(0, 3))
-
-        for row, (label, note) in enumerate(composer.PITCHES, 1):
-            self.tk.Label(
-                grid, text=label, bg=self.PANEL_2, fg=self.BONE,
-                font=("Consolas", 8, "bold"), width=6, anchor="e",
-            ).grid(row=row, column=0, padx=(0, 5), pady=1, sticky="e")
-            for step in range(composer.STEPS):
-                cell = self.tk.Button(
-                    grid, text="", width=2, height=1, bd=0,
-                    bg=self.CARD, activebackground=self.GOLD,
-                    fg="#fff8e8", activeforeground="#fff8e8",
-                    cursor="hand2",
-                    command=lambda s=step, n=note: self._composer_toggle(s, n),
-                )
-                cell.grid(row=row, column=step + 1, padx=1, pady=1, sticky="nsew")
-                self.composer_cells[(step, note)] = cell
-        for column in range(1, composer.STEPS + 1):
-            grid.grid_columnconfigure(column, weight=1)
-
-        footer = self.tk.Frame(parent, bg=self.PANEL_2)
-        footer.pack(fill="x", padx=14, pady=(0, 12))
-        self.composer_status = self.tk.StringVar(
-            value="Pose des notes sur les 16 pas, puis ecoute ou sauvegarde.",
-        )
-        self.tk.Label(
-            footer, textvariable=self.composer_status, bg=self.PANEL_2,
-            fg=self.MUTED, font=("Consolas", 8), anchor="w", justify="left",
-            wraplength=390,
-        ).pack(side="left", fill="x", expand=True)
-        self.ttk.Button(
-            footer, text="Sauvegarder", style="Clear.TButton",
-            command=self._composer_save,
-        ).pack(side="right", padx=(8, 0))
-        self.ttk.Button(
-            footer, text="ECOUTER  ›", style="Run.TButton",
-            command=self._composer_play,
-        ).pack(side="right")
-        for variable in (
-                self.composer_title, self.composer_tempo, self.composer_octave):
-            variable.trace_add("write", lambda *_args: self._composer_refresh())
-
-    def _composer_toggle(self, step: int, note: str) -> None:
-        composer.toggle(self.composer_pattern, step, note)
-        self._composer_refresh()
-
-    def _composer_refresh(self) -> None:
-        for (step, note), cell in self.composer_cells.items():
-            selected = self.composer_pattern[step] == note
-            cell.configure(
-                text="♪" if selected else "",
-                bg=self.EMBER if selected else self.CARD,
-            )
-        try:
-            text = composer.rtttl(
-                self.composer_title.get(), int(self.composer_tempo.get()),
-                int(self.composer_octave.get()), self.composer_pattern,
-            )
-            self.composer_status.set(text.strip())
-        except (ValueError, composer.ComposerError) as exc:
-            self.composer_status.set(str(exc))
-
-    def _composer_clear(self) -> None:
-        self.composer_pattern[:] = composer.empty_pattern()
-        self._composer_refresh()
-
-    def _composer_values(self) -> tuple[str, int, int]:
-        try:
-            return (
-                self.composer_title.get(), int(self.composer_tempo.get()),
-                int(self.composer_octave.get()),
-            )
-        except ValueError as exc:
-            raise composer.ComposerError("le tempo et l'octave doivent etre des nombres") from exc
-
-    def _composer_save(self) -> None:
-        from . import cli
-
-        try:
-            title, tempo, octave = self._composer_values()
-            path = composer.save(
-                cli.paths()["melodies"], title, tempo, octave, self.composer_pattern,
-            )
-        except (OSError, composer.ComposerError) as exc:
-            self.composer_status.set(f"Impossible de sauvegarder : {exc}")
-            return
-        self.composer_status.set(f"Sauvegardee : {path}")
-
-    def _composer_play(self) -> None:
-        from . import cli
-
-        try:
-            title, tempo, octave = self._composer_values()
-            path = composer.write(
-                cli.paths()["data"] / "composer-preview.rtttl",
-                title, tempo, octave, self.composer_pattern,
-            )
-        except (OSError, composer.ComposerError) as exc:
-            self.composer_status.set(f"Impossible de jouer : {exc}")
-            return
-        self._launch_argv(["--play", str(path), "--ignore-season"])
 
     def _build_achievements(self, parent) -> None:
         toolbar = self.tk.Frame(parent, bg=self.PANEL_2)
