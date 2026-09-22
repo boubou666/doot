@@ -562,13 +562,69 @@ doot --seal-submit chemin gauche-droite-gauche
 Chaque Sceau vit dans un système différent. Les sept réponses correctes
 ouvrent un épilogue absent des menus ordinaires et son succès légendaire.
 
+## 🚂 Le Dernier Train pour l'Au-delà
+
+La sixième vague ouvre trois lignes fantômes — cendre, lune et ossuaire. Chaque
+voyage garde son charbon, son intégrité, sa cargaison et les décisions prises
+aux cinq arrêts. Quatre recrues suffisent à former un équipage complet ; les
+trois terminus couronnent le Roi du Dernier Train.
+
+```bash
+doot --ghost-train dernier-depart --train-route cendre
+doot --train-choose explorer          # ou negocier, accelerer
+doot --spectral-crew controleuse
+doot --rail-case siege-vide
+doot --rail-investigate chercher
+doot --rail-investigate accuser:bagagiste
+```
+
+L'archéologie distribue neuf fragments entre trois sites avant de laisser
+restaurer leurs artefacts. Le marché noir ne révèle l'authenticité d'un lot
+qu'après inspection. Les prophéties hebdomadaires choisissent leur objectif à
+partir de la progression réellement présente dans `state.json`.
+
+```bash
+doot --archaeology necropole
+doot --restore-artifact necropole
+doot --black-market inspecter:lot-1 --market-seed minuit
+doot --black-market encherir:lot-1 --market-seed minuit
+doot --prophecy
+doot --prophecy accomplir
+```
+
+La Gazette et le replay cinématographique sont des HTML autonomes, sans police,
+script ou image distante. Les capsules de mods sont limitées à quatre modules
+déclaratifs ; taille, structure et SHA-256 sont vérifiés, et aucun code à
+exécuter n'est accepté.
+
+```bash
+doot --crypt-gazette ./gazette.html
+doot --musical-battle contrechant
+doot --battle-note grave
+doot --funeral-house airain
+doot --house-mission cortege
+doot --mod-forge ./mods "Express des ombres" train
+doot --mod-validate ./mods/express-des-ombres.dootmod
+doot --train-replay ./dernier-train.html
+```
+
+Deux chemins restent volontairement secrets. Trois prophéties ratées par
+**retard**, **silence** et **demi-tour** font apparaître une gare absente des
+cartes. Six échos provenant des grands systèmes du train permettent ensuite de
+répondre à la Treizième Cloche.
+
+```bash
+doot --lost-station
+doot --thirteenth-bell
+```
+
 ## 🏆 Les succès
 
 Doot garde sa progression **uniquement en local**, dans le même `state.json` que
 le compteur de mélodies (`doot --paths` montre son emplacement). Aucun compte,
 aucune connexion et aucune télémétrie : les apparitions, les salves, les mélodies,
 les bords imposés, les formations, les événements et les profils débloquent
-64 succès pour un total de 1 995 points.
+79 succès pour un total de 2 525 points.
 
 ```bash
 doot --achievements     # alias français : doot --succes
