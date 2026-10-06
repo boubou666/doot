@@ -6,6 +6,7 @@ import argparse
 import copy
 import ctypes
 import json
+import math
 import os
 import random
 import shutil
@@ -30,6 +31,9 @@ DEFAULT_VOLUME = 0.55
 DEFAULT_SPIN_CHANCE = 0.25
 DEFAULT_SPIN_MS = 700
 DEFAULT_REVERSE_CHANCE = 0.03
+DEFAULT_SIZE_MIN = 0.7
+DEFAULT_SIZE_MAX = 1.4
+SIZE_BOUNDS = (0.4, 2.0)      # deux fois : une octave sous le doot, 80 % de l'ecran
 DEFAULT_BURST_DELAY = 0.6
 DEFAULT_EVENT_CHANCE = 0.02
 DEFAULT_EVENT_PITY = 100
@@ -183,11 +187,16 @@ def release_pid_file() -> None:
 
 # ------------------------------------------------------------- actions -------
 
-def resolve_media(args, reverse: bool = False) -> tuple:
+def resolve_media(args, reverse: bool = False, taille: float = 1.0) -> tuple:
     """(son, image, duree) pour le prochain doot.
 
     Relu a chaque doot : tu peux deposer un son ou une image pendant que le
     daemon tourne, il les prendra sans redemarrage.
+
+    `taille` accorde le son au squelette : plus grave et plus fort s'il est
+    grand, plus aigu et plus discret s'il est petit. Le mp3 fourni passe par
+    son jumeau WAV ; un son perso compresse, que la stdlib ne decode pas, est
+    joue tel quel.
     """
     p = paths()
 
@@ -205,6 +214,14 @@ def resolve_media(args, reverse: bool = False) -> tuple:
                 inverse = sound.reverse_wav(source, p["data"] / "doot-reverse.wav")
                 if inverse is not None:
                     wav = inverse
+            if taille != 1.0:
+                source = wav
+                if source == sound.BUNDLED_SOUND and sound.BUNDLED_WAV.is_file():
+                    source = sound.BUNDLED_WAV
+                accorde = sound.size_wav(source, p["data"] / "doot-taille.wav", taille,
+                                         getattr(args, "sound_limit", 1.0))
+                if accorde is not None:
+                    wav = accorde
         except Exception as exc:
             log(f"son indisponible : {exc}", quiet=args.quiet)
 
@@ -226,7 +243,8 @@ def resolve_media(args, reverse: bool = False) -> tuple:
     return wav, picture, duration
 
 
-def display_options(args, step: dict | None = None, reverse: bool = False) -> dict:
+def display_options(args, step: dict | None = None, reverse: bool = False,
+                    taille: float = 1.0) -> dict:
     """Les reglages d'affichage, tels que `window.show` les attend.
 
     Un seul endroit ou traduire les options, hors de la boucle de la salve :
@@ -253,6 +271,7 @@ def display_options(args, step: dict | None = None, reverse: bool = False) -> di
         "spin_ms": args.spin_ms,
         "glitch": getattr(args, "mise_en_scene", "") == "faux-bug",
         "reverse": reverse,
+        "taille": taille,
     }
 
     # Une formation ne remplace que les choix laisses au hasard par
@@ -338,6 +357,24 @@ def burst_size(args, rng=random) -> int:
     return rng.randint(bas, haut)
 
 
+def pick_size(args, rng=random) -> float:
+    """La taille de ce squelette, 1 etant la taille habituelle.
+
+    Tiree sur une echelle logarithmique : autant de chances d'etre 1,4 fois
+    plus petit que 1,4 fois plus grand, et la hauteur du doot, qui suit le
+    logarithme de la taille, se repartit uniformement en demi-tons.
+    """
+    # Borne ici et pas au demarrage : un profil planifie s'applique en cours
+    # de route, sans repasser par main(), et un 0 edite a la main ferait
+    # planter le logarithme a chaque doot.
+    plancher, plafond = SIZE_BOUNDS
+    bas = max(plancher, min(plafond, getattr(args, "size_min", 1.0)))
+    haut = max(bas, min(plafond, getattr(args, "size_max", 1.0)))
+    if haut == bas:
+        return bas
+    return math.exp(rng.uniform(math.log(bas), math.log(haut)))
+
+
 def should_reverse(args, rng=random) -> bool:
     """Un seul tirage gouverne ensemble l'image et le son de ce doot."""
     if args.no_reverse:
@@ -374,7 +411,8 @@ def emit_doots(args, journal: bool = False, evenement: str | None = None) -> int
                         log("la saison s'est fermee pendant la salve.", quiet=args.quiet)
                     break
             reverse = should_reverse(args)
-            wav, picture, duration = resolve_media(args, reverse=reverse)
+            taille = pick_size(args)
+            wav, picture, duration = resolve_media(args, reverse=reverse, taille=taille)
             visual_text = (
                 "D O O T"
                 if (sound.visual_fallback_needed(args.no_sound, args.volume, wav)
@@ -383,7 +421,8 @@ def emit_doots(args, journal: bool = False, evenement: str | None = None) -> int
             )
             window.show(wav_path=wav, duration=duration, image_path=picture,
                         visual_text=visual_text,
-                        **display_options(args, plan[index - 1], reverse=reverse))
+                        **display_options(args, plan[index - 1], reverse=reverse,
+                                          taille=taille))
             joues += 1
             if journal:
                 log("doot !" if total == 1 else f"doot {index}/{total} !", quiet=args.quiet)
@@ -3947,6 +3986,16 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                         help="force l'ASCII art meme si une image est disponible")
     parser.add_argument("--scale", type=float, default=None,
                         help="echelle de l'image (defaut : ajustee a l'ecran)")
+    parser.add_argument("--size-min", type=float, default=DEFAULT_SIZE_MIN, metavar="TAILLE",
+                        help="taille du plus petit squelette, 1 etant la taille habituelle "
+                             f"(defaut {DEFAULT_SIZE_MIN}) ; plus il est petit, plus son "
+                             "doot est aigu et discret")
+    parser.add_argument("--size-max", type=float, default=DEFAULT_SIZE_MAX, metavar="TAILLE",
+                        help=f"taille du plus grand squelette (defaut {DEFAULT_SIZE_MAX}) ; "
+                             "plus il est grand, plus son doot est grave et fort")
+    parser.add_argument("--size", type=float, default=None, metavar="TAILLE",
+                        help="impose une taille a tous les squelettes (1 : taille unique, "
+                             f"bornee de {SIZE_BOUNDS[0]} a {SIZE_BOUNDS[1]})")
     parser.add_argument("--volume", type=float, default=DEFAULT_VOLUME,
                         help="volume du jingle synthetise, 0.0 a 1.0")
     parser.add_argument("--opacity", type=float, default=1.0, help="opacite maximale, 0.0 a 1.0")
@@ -4125,6 +4174,8 @@ def main(argv: list[str] | None = None) -> int:
     args.contagion_chance = max(0.0, min(1.0, args.contagion_chance))
     args.reverse_chance = max(0.0, min(1.0, args.reverse_chance))
     args.sound_limit = max(0.0, min(1.0, args.sound_limit))
+    if args.size is not None:
+        args.size_min = args.size_max = args.size
     args.volume = min(max(0.0, args.volume), args.sound_limit)
     if args.reduce_motion:
         args.no_slide = True

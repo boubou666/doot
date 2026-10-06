@@ -255,7 +255,8 @@ def active_monitors() -> list:
 
 def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
                spatialise, slide=True, side=None, slide_ms=420, spin=False,
-               spin_ms=700, beats=None, voices=None, reverse=False) -> bool:
+               spin_ms=700, beats=None, voices=None, reverse=False,
+               taille=1.0) -> bool:
     """Tente les overlays sans tkinter ; faux si tkinter doit prendre le relais.
 
     Wayland passe en premier : layer-shell sait poser la surface sur la sortie
@@ -271,7 +272,7 @@ def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
     for backend, enumere in ((wayland, wayland.monitors), (x11, screens.monitors)):
         if _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
                           image_path, scale, screen, spatialise, slide, side,
-                          slide_ms, spin, spin_ms, beats, voices, reverse):
+                          slide_ms, spin, spin_ms, beats, voices, reverse, taille):
             return True
     return False
 
@@ -279,7 +280,7 @@ def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
 def _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
                    image_path, scale, screen, spatialise, slide, side,
                    slide_ms, spin, spin_ms, beats=None, voices=None,
-                   reverse=False) -> bool:
+                   reverse=False, taille=1.0) -> bool:
     if not backend.available():
         return False
 
@@ -302,7 +303,7 @@ def _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
             wanted = scale if scale is not None else _auto_scale(
                 image_width, image_height, monitor.width, monitor.height
             )
-        frame = png.frame(image_path, wanted)
+        frame = png.frame(image_path, wanted * taille)
 
         entree = pick_side(side) if slide else None
         tours = image_turns(entree, reverse)
@@ -369,6 +370,7 @@ def show(
     glitch: bool = False,
     reverse: bool = False,
     visual_text: str | None = None,
+    taille: float = 1.0,
 ) -> None:
     """Affiche un doot et rend la main quand il a disparu.
 
@@ -398,6 +400,9 @@ def show(
 
     `reverse` ajoute un demi-tour a l'image. `visual_text` remplace le rendu
     par un message geant, notamment lorsque la sortie audio est muette.
+
+    `taille` grandit ou rapetisse le squelette, image ou ASCII, par-dessus
+    l'echelle choisie ; le son, lui, est accorde en amont (`sound.size_wav`).
     """
     if beats or voices:
         slide = False
@@ -415,7 +420,7 @@ def show(
     if not glitch and not visual_text and _show_argb(
             wav_path, duration, center, opacity, image_path, scale, screen,
             spatialise, slide, side, slide_ms, spin, spin_ms, beats, voices,
-            reverse):
+            reverse, taille):
         return
 
     tk, tkfont = _import_tk()
@@ -463,14 +468,16 @@ def show(
                 )
             else:
                 automatic = _auto_scale(large, haut, screen_w, screen_h)
-            wanted = scale if scale is not None else automatic
+            wanted = (scale if scale is not None else automatic) * taille
             if spin and image_path.suffix.lower() == ".png":
                 spins = _spin_photos(tk, image_path, wanted)
                 frames = [spins[0]]
             elif (beats or voices) and image_path.suffix.lower() == ".png":
                 bobs = _bob_photos(tk, image_path, wanted)
                 frames = [bobs[0]]
-            elif tours and image_path.suffix.lower() == ".png":
+            elif (tours or taille != 1.0) and image_path.suffix.lower() == ".png":
+                # Le zoom de Tk ne connait que les fractions en quarts : une
+                # taille de 1.1 y deviendrait 1. png.py redimensionne au pixel.
                 frames = [_rotated_photo(tk, image_path, wanted, tours)]
             else:
                 # Les GIF animes restent droits : png.py ne les decode pas.
@@ -498,7 +505,8 @@ def show(
             label = tk.Label(
                 holder,
                 text=visual_text or art.widest_frame(),
-                font=_pick_font(tkfont, 84 if visual_text else font_size),
+                font=_pick_font(tkfont, 84 if visual_text
+                                else max(6, round(font_size * taille))),
                 fg=FOREGROUND,
                 justify="center" if visual_text else "left",
                 anchor="center" if visual_text else "nw",
