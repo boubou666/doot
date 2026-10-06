@@ -12,6 +12,8 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.33.0] - 2026-10-06
+
 ### Ajouté
 - Les squelettes ont désormais des tailles différentes, tirées entre
   `--size-min` et `--size-max` (0,7 et 1,4 par défaut), et leur voix suit :
@@ -933,7 +935,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.32.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.33.0...HEAD
+[1.33.0]: https://github.com/boubou666/doot/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/boubou666/doot/compare/v1.31.0...v1.32.0
 [1.31.0]: https://github.com/boubou666/doot/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/boubou666/doot/compare/v1.29.0...v1.30.0
