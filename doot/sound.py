@@ -41,6 +41,9 @@ AUDIO_EXTENSIONS = (".wav", ".mp3", ".ogg", ".oga", ".opus", ".flac", ".m4a", ".
 
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 BUNDLED_SOUND = ASSETS_DIR / "doot.mp3"
+# Le meme doot decode une fois pour toutes (mono, 16 bits, 48 kHz) : la stdlib
+# ne lit pas le mp3, et `size_wav` doit tenir les echantillons en main.
+BUNDLED_WAV = ASSETS_DIR / "doot.wav"
 
 # Lecteurs Linux/BSD, dans l'ordre de preference.
 # "any" = gere aussi les formats compresses ; sinon wav (+ ce que lit libsndfile).
@@ -150,6 +153,99 @@ def reverse_wav(src: Path, dest: Path) -> Path | None:
         with wave.open(str(dest), "wb") as handle:
             handle.setparams(params)
             handle.writeframes(reversed_frames)
+    except Exception:
+        return None
+    return dest
+
+
+# ----------------------------------------------------------------- taille ----
+
+def size_gain(taille: float) -> float:
+    """Gain voulu pour un squelette `taille` fois plus grand que d'habitude.
+
+    Le volume suit la surface du squelette, pas sa hauteur : au carre, un
+    squelette de taille 0.7 perd 6 dB et s'entend vraiment plus discret,
+    la ou un gain lineaire n'en retirerait que 3, a peine perceptibles.
+    """
+    return taille * taille
+
+
+def size_wav(src: Path, dest: Path, taille: float, plafond: float = 1.0) -> Path | None:
+    """Ecrit `src` tel que le jouerait un squelette `taille` fois plus grand.
+
+    Comme une bande relue moins vite : un squelette deux fois plus grand lit
+    son doot deux fois plus lentement, donc une octave plus bas, et plus fort
+    (voir `size_gain`). Le son dure d'autant plus longtemps. Interpolation
+    lineaire, comme les notes de melodie.py.
+
+    Le gain ne pousse jamais la crete au-dela de `plafond`, en part de la
+    pleine echelle : c'est `--sound-limit`, et au-dela de 1 ce serait de la
+    saturation. Mais
+    un son deja plus fort que ce plafond n'est pas rabaisse pour autant : un
+    grand squelette ne doit jamais sonner moins fort qu'un squelette normal.
+
+    None si le format s'y refuse, comme `pan_wav` : le doot est alors joue tel
+    quel plutot que muet.
+    """
+    if taille <= 0:
+        return None
+    try:
+        with wave.open(str(src), "rb") as handle:
+            channels = handle.getnchannels()
+            width = handle.getsampwidth()
+            rate = handle.getframerate()
+            raw = handle.readframes(handle.getnframes())
+    except Exception:
+        return None
+
+    if channels not in (1, 2) or width not in (1, 2):
+        return None
+
+    if width == 2:
+        samples = array.array("h")
+        samples.frombytes(raw[:len(raw) - len(raw) % 2])
+        if sys.byteorder == "big":
+            samples.byteswap()
+        limit = 32767
+    else:
+        samples = array.array("h", [b - 128 for b in raw])
+        limit = 127
+
+    frames = len(samples) // channels
+    if frames == 0:
+        return None
+
+    pic = max(abs(v) for v in samples[:frames * channels])
+    gain = size_gain(taille)
+    if gain > 1.0 and pic:
+        gain = min(gain, max(1.0, plafond * limit / pic))
+
+    longueur = max(1, round(frames * taille))
+    out = array.array("h", bytes(2 * longueur * channels))
+    dernier = frames - 1
+    for j in range(longueur):
+        position = j / taille
+        i = min(int(position), dernier)
+        suivant = min(i + 1, dernier)
+        fraction = position - i if i < dernier else 0.0
+        for canal in range(channels):
+            a = samples[i * channels + canal]
+            b = samples[suivant * channels + canal]
+            valeur = int(round((a + (b - a) * fraction) * gain))
+            out[j * channels + canal] = max(-limit - 1, min(limit, valeur))
+
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(dest), "wb") as handle:
+            handle.setnchannels(channels)
+            handle.setsampwidth(width)
+            handle.setframerate(rate)
+            if width == 2:
+                if sys.byteorder == "big":
+                    out.byteswap()
+                handle.writeframes(out.tobytes())
+            else:
+                handle.writeframes(bytes((v + 128) & 255 for v in out))
     except Exception:
         return None
     return dest

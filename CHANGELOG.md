@@ -12,6 +12,16 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Ajouté
+- Les squelettes ont désormais des tailles différentes, tirées entre
+  `--size-min` et `--size-max` (0,7 et 1,4 par défaut), et leur voix suit :
+  plus un squelette est grand, plus son doot est grave et fort ; plus il est
+  petit, plus il est aigu et discret. `--size` impose une taille, `--size 1`
+  rend le comportement d'avant. Les bornes se gardent dans un profil.
+- `doot/assets/doot.wav`, le doot fourni décodé une fois pour toutes : la
+  bibliothèque standard ne lit pas le mp3, et l'accorder demande ses
+  échantillons. Un son perso compressé garde sa voix d'origine.
+
 ## [1.32.0] - 2026-09-22
 
 ### Ajouté

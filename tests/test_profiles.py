@@ -49,6 +49,11 @@ class Profils(unittest.TestCase):
         }), encoding="utf-8")
         self.assertEqual(profiles.load(self.path, "bizarre"), {"min": 12})
 
+    def test_les_bornes_de_taille_sont_persistees(self):
+        profiles.save(self.path, "geants", {"size_min": 1, "size_max": 1.8})
+        self.assertEqual(profiles.load(self.path, "geants"),
+                         {"size_min": 1.0, "size_max": 1.8})
+
     def test_nom_invalide_refuse(self):
         with self.assertRaises(profiles.ProfileError):
             profiles.save(self.path, "deux mots", {"formation": "rain"})

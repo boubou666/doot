@@ -338,7 +338,7 @@ class DootInverseEtMuet(CliTestCase):
         self.addCleanup(patch.stop)
 
     def test_reverse_force_image_et_wav_inverses(self):
-        self.run_cli("--once", "--reverse")
+        self.run_cli("--once", "--reverse", "--size", "1")
         call = self.shown[0]
         self.assertTrue(call["reverse"])
         self.assertEqual(call["wav_path"].name, "doot-reverse.wav")
@@ -363,6 +363,82 @@ class DootInverseEtMuet(CliTestCase):
     def test_mode_sans_son_affiche_le_doot_geant(self):
         self.run_cli("--once", "--no-sound", "--no-reverse")
         self.assertEqual(self.shown[0]["visual_text"], "D O O T")
+
+
+class TailleDesSquelettes(CliTestCase):
+    """La taille tiree pour un squelette va jusqu'a la fenetre et jusqu'au son."""
+
+    def setUp(self):
+        super().setUp()
+        patch = mock.patch.object(season, "in_season", lambda now=None: True)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    class Bornes:
+        """Un tirage qui rend toujours la meme fraction de l'intervalle."""
+
+        def __init__(self, fraction):
+            self.fraction = fraction
+
+        def uniform(self, a, b):
+            return a + (b - a) * self.fraction
+
+    def test_tirage_logarithmique_entre_les_bornes(self):
+        args = cli.parse_args(["--size-min", "0.5", "--size-max", "2"])
+        self.assertAlmostEqual(cli.pick_size(args, self.Bornes(0.0)), 0.5)
+        self.assertAlmostEqual(cli.pick_size(args, self.Bornes(1.0)), 2.0)
+        # Le milieu du tirage est la moyenne geometrique : autant de petits
+        # que de grands, et autant de demi-tons au-dessus qu'au-dessous.
+        self.assertAlmostEqual(cli.pick_size(args, self.Bornes(0.5)), 1.0)
+
+    def test_valeurs_aberrantes_bornees(self):
+        args = cli.parse_args(["--size-min", "0", "--size-max", "50"])
+        self.assertEqual(cli.pick_size(args, self.Bornes(0.0)), cli.SIZE_BOUNDS[0])
+        self.assertEqual(cli.pick_size(args, self.Bornes(1.0)), cli.SIZE_BOUNDS[1])
+        inverse = cli.parse_args(["--size-min", "1.5", "--size-max", "0.8"])
+        self.assertEqual(cli.pick_size(inverse, self.Bornes(1.0)), 1.5)
+
+    def test_par_defaut_les_tailles_varient(self):
+        self.run_cli("--once", "--no-sound")
+        taille = self.shown[0]["taille"]
+        self.assertGreaterEqual(taille, cli.DEFAULT_SIZE_MIN)
+        self.assertLessEqual(taille, cli.DEFAULT_SIZE_MAX)
+
+    def test_size_impose_la_taille(self):
+        self.run_cli("--once", "--no-sound", "--size", "1.5")
+        self.assertEqual(self.shown[0]["taille"], 1.5)
+
+    def test_un_grand_squelette_joue_un_doot_accorde_et_plus_long(self):
+        from doot import sound
+
+        self.paths["sound"].mkdir(parents=True, exist_ok=True)
+        sound.write_wav(self.paths["sound"] / "perso.wav", 0.5)
+        self.run_cli("--once", "--no-reverse", "--size", "1")
+        self.run_cli("--once", "--no-reverse", "--size", "1.8")
+        normal, grand = self.shown
+        self.assertEqual(normal["wav_path"].name, "perso.wav")
+        self.assertEqual(grand["wav_path"].name, "doot-taille.wav")
+        self.assertAlmostEqual(sound.probe_duration(grand["wav_path"]),
+                               sound.probe_duration(normal["wav_path"]) * 1.8, delta=0.01)
+        # L'affichage couvre le son ralenti, pas celui d'origine.
+        self.assertGreaterEqual(grand["duration"], sound.probe_duration(grand["wav_path"]))
+
+    def test_le_mp3_fourni_passe_par_son_jumeau_wav(self):
+        from doot import sound
+
+        with mock.patch.object(sound, "pick_sound", return_value=sound.BUNDLED_SOUND):
+            self.run_cli("--once", "--no-reverse", "--size", "0.6")
+        self.assertEqual(self.shown[0]["wav_path"].name, "doot-taille.wav")
+
+    def test_un_son_perso_compresse_est_joue_tel_quel(self):
+        from doot import sound
+
+        self.paths["sound"].mkdir(parents=True, exist_ok=True)
+        perso = self.paths["sound"] / "perso.ogg"
+        perso.write_bytes(b"pas decodable par la stdlib")
+        with mock.patch.object(sound, "probe_duration", return_value=None):
+            self.run_cli("--once", "--no-reverse", "--size", "1.8")
+        self.assertEqual(self.shown[0]["wav_path"], perso)
 
 
 class Salves(CliTestCase):

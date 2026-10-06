@@ -149,6 +149,110 @@ class SonInverse(unittest.TestCase):
             self.assertIsNone(sound.reverse_wav(source, Path(dossier) / "inverse.wav"))
 
 
+class TailleDuSon(unittest.TestCase):
+    """Un grand squelette sonne plus grave et plus fort, un petit l'inverse."""
+
+    TAUX = 8000
+    FREQUENCE = 440.0
+
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._dir.cleanup)
+        self.root = Path(self._dir.name)
+
+    def sinus(self, nom, amplitude=10000, canaux=1, octets=2, secondes=0.5):
+        import math
+        import struct
+
+        chemin = self.root / nom
+        trames = int(self.TAUX * secondes)
+        valeurs = [math.sin(math.tau * self.FREQUENCE * i / self.TAUX) for i in range(trames)]
+        with wave.open(str(chemin), "wb") as handle:
+            handle.setnchannels(canaux)
+            handle.setsampwidth(octets)
+            handle.setframerate(self.TAUX)
+            if octets == 2:
+                handle.writeframes(b"".join(
+                    struct.pack("<h", int(v * amplitude)) * canaux for v in valeurs))
+            else:
+                handle.writeframes(bytes(
+                    (128 + int(v * amplitude)) & 255 for v in valeurs for _ in range(canaux)))
+        return chemin
+
+    def lire(self, chemin):
+        """(trames, frequence estimee, crete) d'un WAV mono 16 bits."""
+        import struct
+
+        with wave.open(str(chemin), "rb") as handle:
+            trames = handle.getnframes()
+            taux = handle.getframerate()
+            data = handle.readframes(trames)
+        valeurs = struct.unpack(f"<{len(data) // 2}h", data)
+        montees = sum(1 for a, b in zip(valeurs, valeurs[1:]) if a < 0 <= b)
+        return trames, montees / (trames / taux), max(abs(v) for v in valeurs)
+
+    def test_deux_fois_plus_grand_sonne_une_octave_plus_bas_et_dure_deux_fois_plus(self):
+        source = self.sinus("s.wav")
+        sortie = sound.size_wav(source, self.root / "g.wav", 2.0)
+        trames, frequence, _crete = self.lire(sortie)
+        self.assertEqual(trames, 2 * int(self.TAUX * 0.5))
+        self.assertAlmostEqual(frequence, self.FREQUENCE / 2, delta=4)
+
+    def test_deux_fois_plus_petit_sonne_une_octave_plus_haut(self):
+        source = self.sinus("s.wav")
+        sortie = sound.size_wav(source, self.root / "p.wav", 0.5)
+        trames, frequence, _crete = self.lire(sortie)
+        self.assertEqual(trames, int(self.TAUX * 0.5) // 2)
+        self.assertAlmostEqual(frequence, self.FREQUENCE * 2, delta=8)
+
+    def test_le_volume_suit_la_surface(self):
+        source = self.sinus("s.wav", amplitude=4000)
+        _t, _f, petit = self.lire(sound.size_wav(source, self.root / "p.wav", 0.7))
+        _t, _f, grand = self.lire(sound.size_wav(source, self.root / "g.wav", 1.4))
+        self.assertAlmostEqual(petit, 4000 * 0.49, delta=60)
+        self.assertAlmostEqual(grand, 4000 * 1.96, delta=60)
+
+    def test_un_grand_squelette_ne_sature_pas(self):
+        source = self.sinus("s.wav", amplitude=20000)
+        _t, _f, crete = self.lire(sound.size_wav(source, self.root / "g.wav", 2.0))
+        self.assertGreater(crete, 30000)
+        self.assertLessEqual(crete, 32767)
+
+    def test_le_plafond_sonore_borne_le_gain(self):
+        source = self.sinus("s.wav", amplitude=8000)
+        _t, _f, crete = self.lire(sound.size_wav(source, self.root / "g.wav", 2.0, plafond=0.4))
+        self.assertAlmostEqual(crete, 0.4 * 32767, delta=60)
+
+    def test_un_son_deja_au_plafond_n_est_pas_rabaisse(self):
+        """Le plafond freine le gain d'un grand squelette, il ne le rend pas plus discret."""
+        source = self.sinus("s.wav", amplitude=20000)
+        _t, _f, crete = self.lire(sound.size_wav(source, self.root / "g.wav", 1.4, plafond=0.4))
+        self.assertAlmostEqual(crete, 20000, delta=60)
+
+    def test_stereo_et_huit_bits_gardent_leur_format(self):
+        for canaux, octets, amplitude in ((2, 2, 10000), (1, 1, 60), (2, 1, 60)):
+            source = self.sinus(f"s{canaux}{octets}.wav", amplitude, canaux, octets)
+            sortie = sound.size_wav(source, self.root / f"t{canaux}{octets}.wav", 1.3)
+            self.assertIsNotNone(sortie)
+            with wave.open(str(sortie), "rb") as handle:
+                self.assertEqual(handle.getnchannels(), canaux)
+                self.assertEqual(handle.getsampwidth(), octets)
+                self.assertEqual(handle.getframerate(), self.TAUX)
+                self.assertEqual(handle.getnframes(), round(int(self.TAUX * 0.5) * 1.3))
+
+    def test_refuse_un_fichier_non_wav(self):
+        source = self.root / "s.mp3"
+        source.write_bytes(b"pas un wav")
+        self.assertIsNone(sound.size_wav(source, self.root / "t.wav", 1.3))
+
+    def test_le_doot_fourni_a_son_jumeau_wav(self):
+        """Le mp3 ne se decode pas : sans ce WAV, le doot par defaut ne changerait pas de voix."""
+        with wave.open(str(sound.BUNDLED_WAV), "rb") as handle:
+            self.assertEqual(handle.getnchannels(), 1)
+            self.assertEqual(handle.getsampwidth(), 2)
+            self.assertAlmostEqual(handle.getnframes() / handle.getframerate(), 1.2, delta=0.1)
+
+
 class DootVisuel(unittest.TestCase):
     def test_parse_les_outils_des_trois_plateformes(self):
         self.assertEqual(sound._parse_output_level("Volume: 0.42"), 0.42)

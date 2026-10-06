@@ -256,6 +256,25 @@ class TourComplet(unittest.TestCase):
         self.assertIn(photos[1], etiquettes[0].images)
 
 
+class TailleALEcran(unittest.TestCase):
+    """La taille s'ajoute a l'echelle, qu'elle soit choisie ou automatique."""
+
+    def test_overlay_argb_multiplie_l_echelle(self):
+        monitor = window.screens.Monitor(0, 0, 1000, 1000)
+        backend = mock.Mock()
+        backend.available.return_value = True
+        image = mock.Mock(width=50, height=80)
+        with mock.patch.object(window.png, "size", return_value=(100, 100)), \
+             mock.patch.object(window.png, "frame", return_value=image) as frame:
+            self.assertTrue(window._tente_overlay(
+                backend, lambda: [monitor], None, 1.0, False, 1.0,
+                Path("squelette.png"), 0.5, None, False, False, None, 420,
+                False, 700, taille=1.6,
+            ))
+        (_chemin, echelle), _options = frame.call_args
+        self.assertAlmostEqual(echelle, 0.8)
+
+
 class Orchestre(unittest.TestCase):
     """La grille grossit sans plafond et reste dans les bornes de l'ecran."""
 

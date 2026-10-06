@@ -286,6 +286,8 @@ doot --art                   # imprime le squelette dans le terminal
 | `--image` | — | un PNG/GIF précis à afficher |
 | `--no-image` | — | force l'ASCII art même si une image est disponible |
 | `--scale` | auto | échelle de l'image (par défaut ajustée à l'écran) |
+| `--size-min` / `--size-max` | `0.7` / `1.4` | bornes de la taille des squelettes ; plus grand, plus grave et plus fort |
+| `--size` | — | impose une taille à tous les squelettes (`1` : tous pareils, comme avant) |
 | `--volume` | `0.55` | volume du jingle synthétisé, de `0.0` à `1.0` |
 | `--opacity` | `1.0` | opacité maximale de l'overlay |
 | `--font-size` | `15` | taille du squelette ASCII |
@@ -1374,6 +1376,25 @@ un demi-tour et les trames du WAV sont jouées dans l'ordre inverse. `--reverse`
 le force pour un essai et `--no-reverse` le coupe. Si le son choisi est dans un
 format compressé, le reverse utilise le jingle synthétisé en WAV, afin de ne
 pas ajouter de décodeur audio au projet.
+
+### Petits et grands squelettes
+
+Chaque squelette tire sa taille entre `--size-min` et `--size-max` (0,7 et 1,4
+par défaut), et sa voix suit : un grand squelette lit son doot plus lentement,
+comme une bande ralentie, donc plus grave, et le joue plus fort ; un petit
+squelette fait l'inverse. Deux fois plus grand, c'est une octave plus bas. Le
+volume suit la surface : à 0,7 le doot perd 6 dB, à 1,4 il en gagne jusqu'à 6,
+dans la limite de la marge du fichier et de `--sound-limit`, sans jamais
+saturer. Le doot fourni a 4 dB de marge.
+
+Le tirage est logarithmique : autant de chances d'être 1,4 fois plus petit que
+1,4 fois plus grand. `--size 1` rend tous les squelettes identiques, `--size 2`
+fait défiler des géants ; les bornes vont de 0,4 à 2. Les mélodies gardent la
+taille habituelle, sans quoi chaque squelette jouerait faux.
+
+Le mp3 fourni est accordé à partir de son jumeau `doot/assets/doot.wav`. Un son
+perso compressé (`.mp3`, `.ogg`…) garde sa voix d'origine : seul le squelette
+change de taille. Dépose un `.wav` pour qu'il suive.
 
 ## 🗝️ Où sont les fichiers
 

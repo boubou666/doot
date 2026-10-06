@@ -25,7 +25,7 @@ OPTIONS = (
     "screen", "no_sound", "no_pan",
     "event_chance", "event_pity", "no_event", "contagion_chance",
     "no_contagion", "quiet", "quiet_hours", "reduce_motion", "no_flash",
-    "high_contrast", "sound_limit",
+    "high_contrast", "sound_limit", "size_min", "size_max",
 )
 
 _ENTIERS = {
@@ -36,7 +36,7 @@ _NOMBRES = {
     "burst_delay", "duration", "scale", "volume", "opacity",
     "melody_chance", "slide_chance", "spin_chance", "reverse_chance", "event_chance",
     "contagion_chance",
-    "sound_limit",
+    "sound_limit", "size_min", "size_max",
 }
 _BOOLEENS = {
     "no_image", "center", "no_slide", "no_melody", "spin", "no_spin",
