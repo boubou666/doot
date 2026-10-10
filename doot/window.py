@@ -26,7 +26,7 @@ from pathlib import Path
 
 from desktop_overlay import window as overlay_window
 
-from . import art, overlay, png, screens, sound, wayland, x11
+from . import art, glitch as digital_glitch, overlay, png, screens, sound, wayland, x11
 
 TRANSPARENT_KEY = "#ff00ff"
 FALLBACK_BG = "#0b0b12"
@@ -201,6 +201,22 @@ def _bob_photos(tk, image_path: Path, scale: float) -> list:
     return photos
 
 
+def _glitch_photos(tk, photo) -> list:
+    """Rend les parasites en PhotoImage, y compris sur une frame de GIF."""
+    with tempfile.TemporaryDirectory(prefix="doot-glitch-") as directory:
+        path = Path(directory) / "frame.png"
+        photo.write(str(path), format="png")
+        source = png.frame(path)
+        photos = []
+        for frame in digital_glitch.frames(source):
+            if frame is source:
+                photos.append(photo)
+            else:
+                png.write_png(path, frame)
+                photos.append(tk.PhotoImage(file=str(path)))
+    return photos
+
+
 def _auto_scale(width: int, height: int, screen_w: int, screen_h: int) -> float:
     """Reduit l'image si elle mange plus de 40 % de l'ecran."""
     limit_h = screen_h * 0.40
@@ -256,7 +272,7 @@ def active_monitors() -> list:
 def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
                spatialise, slide=True, side=None, slide_ms=420, spin=False,
                spin_ms=700, beats=None, voices=None, reverse=False,
-               taille=1.0) -> bool:
+               taille=1.0, glitch_effect=False) -> bool:
     """Tente les overlays sans tkinter ; faux si tkinter doit prendre le relais.
 
     Wayland passe en premier : layer-shell sait poser la surface sur la sortie
@@ -272,7 +288,8 @@ def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
     for backend, enumere in ((wayland, wayland.monitors), (x11, screens.monitors)):
         if _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
                           image_path, scale, screen, spatialise, slide, side,
-                          slide_ms, spin, spin_ms, beats, voices, reverse, taille):
+                          slide_ms, spin, spin_ms, beats, voices, reverse,
+                          taille, glitch_effect):
             return True
     return False
 
@@ -280,7 +297,7 @@ def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
 def _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
                    image_path, scale, screen, spatialise, slide, side,
                    slide_ms, spin, spin_ms, beats=None, voices=None,
-                   reverse=False, taille=1.0) -> bool:
+                   reverse=False, taille=1.0, glitch_effect=False) -> bool:
     if not backend.available():
         return False
 
@@ -340,7 +357,7 @@ def _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
                      start=(depart_x, depart_y), slide_ms=slide_ms if slide else 0,
                      spins=spins, spin_ms=spin_ms if spins else 0,
                      beats=beats, bobs=bobs, voices=voices,
-                     columns=columns, gap=gap)
+                     columns=columns, gap=gap, glitch_effect=glitch_effect)
     except Exception:
         # overlay.run ne laisse remonter qu'avant affichage : arriver ici veut
         # dire que rien n'est a l'ecran, donc le repli ne fera pas de double.
@@ -371,6 +388,7 @@ def show(
     reverse: bool = False,
     visual_text: str | None = None,
     taille: float = 1.0,
+    glitch_effect: bool = False,
 ) -> None:
     """Affiche un doot et rend la main quand il a disparu.
 
@@ -400,6 +418,8 @@ def show(
 
     `reverse` ajoute un demi-tour a l'image. `visual_text` remplace le rendu
     par un message geant, notamment lorsque la sortie audio est muette.
+    `glitch_effect` anime des bandes dechirees et des echos rouge/cyan. Il
+    prend la place du tour complet ; `glitch` garde la chute du faux bug.
 
     `taille` grandit ou rapetisse le squelette, image ou ASCII, par-dessus
     l'echelle choisie ; le son, lui, est accorde en amont (`sound.size_wav`).
@@ -407,9 +427,8 @@ def show(
     if beats or voices:
         slide = False
         spin = False
-    if reverse:
-        # Une apparition reverse doit rester reconnaissable comme telle, pas
-        # se redresser aussitot au premier quart d'un tour complet.
+    if reverse or glitch_effect:
+        # Le demi-tour reverse et les bandes glitch doivent rester lisibles.
         spin = False
     slide = decide_slide(slide, side, slide_chance)
     # Un tour de duree nulle n'est pas un tour : il ne ferait que payer les
@@ -420,7 +439,7 @@ def show(
     if not glitch and not visual_text and _show_argb(
             wav_path, duration, center, opacity, image_path, scale, screen,
             spatialise, slide, side, slide_ms, spin, spin_ms, beats, voices,
-            reverse, taille):
+            reverse, taille, glitch_effect):
         return
 
     tk, tkfont = _import_tk()
@@ -488,6 +507,13 @@ def show(
             spins = []
             bobs = []
 
+    glitch_photos = {}
+    if glitch_effect and frames:
+        # Preparation avant le son, pour que le premier parasite soit cale.
+        for photo in frames + bobs:
+            if id(photo) not in glitch_photos:
+                glitch_photos[id(photo)] = _glitch_photos(tk, photo)
+
     widget_kwargs = dict(bg=background, borderwidth=0, highlightthickness=0)
     holder = root
     if skeleton_count > 1:
@@ -500,7 +526,9 @@ def show(
         if frames:
             label = tk.Label(holder, image=frames[0], **widget_kwargs)
             # Garde une reference, sinon Tk libere les images.
-            label.image = frames + spins + bobs
+            label.image = frames + spins + bobs + [
+                photo for variants in glitch_photos.values() for photo in variants
+            ]
         else:
             label = tk.Label(
                 holder,
@@ -565,6 +593,7 @@ def show(
         "step": 0,
         "quart": 0,
         "etapes": [0] * skeleton_count,
+        "glitch_step": None,
     }
     # `elapsed` compte les pas de 40 ms, et chaque pas dure un peu plus : sur
     # un refrain de 18 s la derive se voit. Les coups de trompette se calent
@@ -579,7 +608,8 @@ def show(
 
     def tick() -> None:
         state["elapsed"] += tick_ms
-        elapsed = state["elapsed"]
+        elapsed = (int((time.monotonic() - depart) * 1000)
+                   if glitch_effect else state["elapsed"])
 
         # Pendant le glissement, pas de fondu d'apparition : le bord de l'ecran
         # revele deja le squelette, et les deux ensemble font bouillie.
@@ -624,7 +654,23 @@ def show(
                     state["etapes"][index] = penche
                     musicien.configure(image=bobs[penche])
 
-        if frames:
+        if glitch_effect:
+            step = digital_glitch.phase(elapsed)
+            if frames:
+                for index, musicien in enumerate(labels):
+                    photo = (bobs[etapes[index]] if bobs else
+                             frames[(elapsed // GIF_FRAME_MS) % len(frames)])
+                    musicien.configure(image=glitch_photos[id(photo)][step])
+            elif step != state["glitch_step"]:
+                source = visual_text or art.widest_frame()
+                for musicien in labels:
+                    musicien.configure(
+                        text=digital_glitch.text(source, step),
+                        fg=("#5eeaff" if step in (1, 2, 5) else
+                            "#ff657c" if step in (3, 6) else FOREGROUND),
+                    )
+            state["glitch_step"] = step
+        elif frames:
             if len(frames) > 1:
                 wanted = (elapsed // GIF_FRAME_MS) % len(frames)
                 if wanted != state["step"]:

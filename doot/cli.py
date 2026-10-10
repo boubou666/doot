@@ -187,6 +187,28 @@ def release_pid_file() -> None:
 
 # ------------------------------------------------------------- actions -------
 
+def glitch_enabled(args) -> bool:
+    return (getattr(args, "glitch", False)
+            and not getattr(args, "no_glitch", False)
+            and not getattr(args, "reduce_motion", False)
+            and not getattr(args, "no_flash", False))
+
+
+def glitch_sound(args, source: Path, destination: Path) -> Path:
+    """Transforme le WAV choisi, avec jingle de repli pour un son compresse."""
+    if not glitch_enabled(args):
+        return source
+    if source == sound.BUNDLED_SOUND and sound.BUNDLED_WAV.is_file():
+        source = sound.BUNDLED_WAV
+    result = sound.glitch_wav(source, destination)
+    if result is None:
+        source = sound.ensure_wav(paths()["wav"], args.volume, force=True)
+        result = sound.glitch_wav(source, destination)
+    if result is None:
+        raise ValueError("impossible de produire le son glitch")
+    return result
+
+
 def resolve_media(args, reverse: bool = False, taille: float = 1.0) -> tuple:
     """(son, image, duree) pour le prochain doot.
 
@@ -222,7 +244,10 @@ def resolve_media(args, reverse: bool = False, taille: float = 1.0) -> tuple:
                                          getattr(args, "sound_limit", 1.0))
                 if accorde is not None:
                     wav = accorde
+            wav = glitch_sound(args, wav, p["data"] / "doot-glitch.wav")
         except Exception as exc:
+            if glitch_enabled(args):
+                wav = None
             log(f"son indisponible : {exc}", quiet=args.quiet)
 
     picture = None
@@ -270,6 +295,7 @@ def display_options(args, step: dict | None = None, reverse: bool = False,
         "spin_chance": 1.0 if args.spin else args.spin_chance,
         "spin_ms": args.spin_ms,
         "glitch": getattr(args, "mise_en_scene", "") == "faux-bug",
+        "glitch_effect": glitch_enabled(args),
         "reverse": reverse,
         "taille": taille,
     }
@@ -2741,7 +2767,10 @@ def emit_melodie(args, morceau) -> None:
     if not args.no_sound:
         try:
             wav = melodie.render(p["data"] / "melodie.wav", morceau, args.transpose)
+            wav = glitch_sound(args, wav, p["data"] / "melodie-glitch.wav")
         except Exception as exc:
+            if glitch_enabled(args):
+                wav = None
             log(f"melodie indisponible : {exc}", quiet=args.quiet)
 
     picture = None
@@ -3984,6 +4013,10 @@ def build_parser(profile_defaults: dict | None = None) -> argparse.ArgumentParse
                         help="PNG ou GIF a afficher au lieu de l'ASCII art")
     parser.add_argument("--no-image", action="store_true",
                         help="force l'ASCII art meme si une image est disponible")
+    parser.add_argument("--glitch", action="store_true",
+                        help="effet anime : bandes decalees, echos rouge/cyan et son qui begaie")
+    parser.add_argument("--no-glitch", action="store_true",
+                        help="desactive l'effet glitch, meme dans un profil")
     parser.add_argument("--scale", type=float, default=None,
                         help="echelle de l'image (defaut : ajustee a l'ecran)")
     parser.add_argument("--size-min", type=float, default=DEFAULT_SIZE_MIN, metavar="TAILLE",
@@ -4126,6 +4159,10 @@ def parse_args(argv: list[str] | None = None):
         args.no_reverse = False
     if "--no-reverse" in raw:
         args.reverse = False
+    if "--glitch" in raw and "--no-glitch" not in raw:
+        args.no_glitch = False
+    if "--no-glitch" in raw:
+        args.glitch = False
     args._profile_loaded = selected
     args._raw_options = tuple(raw)
     return args

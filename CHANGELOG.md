@@ -12,6 +12,16 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.34.0] - 2026-10-10
+
+### Ajouté
+- `--glitch` anime des bandes déchirées et des échos rouge/cyan, avec un son
+  qui bégaie, se coupe et se dégrade sur le même rythme. PNG, GIF, ASCII,
+  mode muet et mélodies multivoix sont pris en charge. Le réglage figure
+  dans la GUI et les profils ; `--no-glitch` le désactive.
+- Le son fourni est glitché depuis son WAV décodé, après l'accordage lié à la
+  taille. Les réglages de mouvements réduits et de flashs restent prioritaires.
+
 ## [1.33.0] - 2026-10-06
 
 ### Ajouté
@@ -935,7 +945,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.33.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.34.0...HEAD
+[1.34.0]: https://github.com/boubou666/doot/compare/v1.33.0...v1.34.0
 [1.33.0]: https://github.com/boubou666/doot/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/boubou666/doot/compare/v1.31.0...v1.32.0
 [1.31.0]: https://github.com/boubou666/doot/compare/v1.30.0...v1.31.0

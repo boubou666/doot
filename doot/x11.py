@@ -331,7 +331,7 @@ def play(frame: png.Frame, x: int, y: int, duration: float,
          spins: list | None = None, spin_ms: int = 0,
          beats: list | None = None, bobs: list | None = None,
          voices: list[list] | None = None, columns: int = 1,
-         gap: int = 0) -> None:
+         gap: int = 0, glitch_effect: bool = False) -> None:
     """Fait surgir l'image puis la laisse s'effacer.
 
     `pan` place le son de -1 (gauche) a +1 (droite), selon l'endroit du bureau
@@ -346,14 +346,15 @@ def play(frame: png.Frame, x: int, y: int, duration: float,
     """
     with _errors_muted():
         _play(frame, x, y, duration, opacity, wav_path, pan, start, slide_ms,
-              spins, spin_ms, beats, bobs, voices, columns, gap)
+              spins, spin_ms, beats, bobs, voices, columns, gap, glitch_effect)
 
 
 def _play(frame, x, y, duration, opacity, wav_path, pan=0.0,
           start=None, slide_ms=0, spins=None, spin_ms=0,
-          beats=None, bobs=None, voices=None, columns=1, gap=0) -> None:
+          beats=None, bobs=None, voices=None, columns=1, gap=0,
+          glitch_effect=False) -> None:
     glisse = slide_ms > 0 and start is not None and tuple(start) != (x, y)
     depart_x, depart_y = start if glisse else (x, y)
     overlay.run(_Overlay(frame.width, frame.height, depart_x, depart_y),
                 frame, x, y, duration, opacity, wav_path, pan, start, slide_ms,
-                spins, spin_ms, beats, bobs, voices, columns, gap)
+                spins, spin_ms, beats, bobs, voices, columns, gap, glitch_effect)
