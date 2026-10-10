@@ -302,6 +302,8 @@ doot --art                   # imprime le squelette dans le terminal
 | `--reverse` | — | force un squelette à l'envers et son doot WAV joué à rebours |
 | `--reverse-chance` | `0.03` | proportion de doots inversés, image et son ensemble |
 | `--no-reverse` | — | désactive complètement les doots inversés |
+| `--glitch` | — | bandes animées, séparation rouge/cyan et son qui bégaie |
+| `--no-glitch` | — | désactive le glitch, même s'il vient d'un profil |
 | `--melody-chance` | `0.05` | proportion de déclenchements qui jouent une mélodie au lieu d'un doot |
 | `--melody-pity` | `40` | le N-ième déclenchement sans mélodie en joue une à coup sûr (`0` : aucune garantie) |
 | `--no-melody` | — | jamais de mélodie à la place d'un doot |
@@ -1362,6 +1364,31 @@ panoramiser : MCI sous Windows, un filtre `pan` sous Linux. Quand rien ne sait,
 le son est joué au centre plutôt que pas du tout.
 
 `--no-pan` désactive tout ça.
+
+### Doot glitch animé
+
+```bash
+doot --once --glitch
+doot --glitch                  # toutes les apparitions du daemon
+doot --play megalovania --glitch
+doot --once --glitch --no-sound # grand DOOT glitché, en silence
+```
+
+Le squelette se déchire en bandes horizontales, avec des échos rouge/cyan et
+des coupures de lignes. L'animation alterne parasites et retours à l'image
+intacte toutes les 80 ms. Le son suit ce rythme avec des fragments répétés,
+des micro-inversions, des coupures et un timbre numérique dégradé. Le glitch
+remplace le tour complet ; les entrées par un bord et les hochements des
+mélodies restent actifs. Il fonctionne aussi sur les GIF, l'ASCII et le grand
+DOOT du mode muet, et se règle dans la GUI ou se sauvegarde dans un profil.
+
+Les sons personnels en WAV PCM sont transformés sans toucher à l'original ni
+changer leur durée. Le son fourni utilise son jumeau WAV décodé, puis conserve le
+réglage de taille avant le glitch. Pour un son personnel compressé, le mode
+utilise le jingle synthétisé en WAV comme le mode reverse. Aucune dépendance
+supplémentaire n'est nécessaire. `--no-glitch` désactive l'effet d'un profil.
+
+Les réglages `--reduce-motion` et `--no-flash` désactivent le glitch.
 
 ### Doot muet et doot reverse
 

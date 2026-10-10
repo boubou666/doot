@@ -14,7 +14,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from . import png, screens, sound
+from . import glitch, png, screens, sound
 
 TICK = 0.04
 BOB = 0.18   # duree d'un hochement de tete, en secondes
@@ -55,7 +55,7 @@ def run(overlay, frame: png.Frame, x: int, y: int, duration: float,
         spins: list | None = None, spin_ms: int = 0,
         beats: list | None = None, bobs: list | None = None,
         voices: list[list] | None = None, columns: int = 1,
-        gap: int = 0) -> None:
+        gap: int = 0, glitch_effect: bool = False) -> None:
     """Joue l'apparition puis rend la main, l'overlay ferme dans tous les cas.
 
     `spins` sont les quatre etapes d'un tour complet (`png.spin_frames`) :
@@ -79,8 +79,12 @@ def run(overlay, frame: png.Frame, x: int, y: int, duration: float,
     tourne = spin_ms > 0 and spins is not None and len(spins) == 4
     groupe = bool(voices) and bobs is not None and len(bobs) == 3
     hoche = not groupe and bool(beats) and bobs is not None and len(bobs) == 3
+    glitch_cache = {}
 
     try:
+        if glitch_effect:
+            for image in ([] if groupe else [frame]) + (spins or []) + (bobs or []):
+                glitch_cache[id(image)] = glitch.frames(image)
         overlay.map()
     except Exception:
         overlay.close()
@@ -102,6 +106,7 @@ def run(overlay, frame: png.Frame, x: int, y: int, duration: float,
         etape = 0
         etapes_groupe = tuple(0 for _ in voices) if groupe else ()
         image_groupe = frame
+        last_glitch = None
 
         while True:
             elapsed = time.monotonic() - debut
@@ -126,15 +131,17 @@ def run(overlay, frame: png.Frame, x: int, y: int, duration: float,
             # l'image reste droite (quart 0) jusqu'a la fin du doot.
             voulu = int(elapsed / rotation * 4) % 4 if tourne and elapsed < rotation else 0
             penche = bob_at(elapsed, beats) if hoche and not tourne else 0
+            glitch_step = glitch.phase(int(elapsed * 1000)) if glitch_effect else None
             groupe_change = False
             if tourne:
                 image = spins[voulu]
             elif groupe:
                 nouvelles = tuple(bob_at(elapsed, coups) for coups in voices)
-                if nouvelles != etapes_groupe:
+                if nouvelles != etapes_groupe or (glitch_effect and glitch_step != last_glitch):
                     etapes_groupe = nouvelles
                     image_groupe = png.montage(
-                        [bobs[etape] for etape in etapes_groupe], columns, gap
+                        [glitch_cache[id(bobs[etape])][glitch_step] if glitch_effect
+                         else bobs[etape] for etape in etapes_groupe], columns, gap
                     )
                     groupe_change = True
                 image = image_groupe
@@ -143,16 +150,21 @@ def run(overlay, frame: png.Frame, x: int, y: int, duration: float,
             else:
                 image = frame
 
+            if glitch_effect and not groupe:
+                image = glitch_cache[id(image)][glitch_step]
+
             level = round(factor * ceiling * 255)
             # Pendant le glissement on redessine a chaque pas : l'opacite ne
             # bouge pas, donc rien ne le declencherait, et le contenu d'une
             # surface qu'on deplace n'est pas garanti d'etre conserve.
             if (level != montre or voulu != quart or penche != etape
-                    or groupe_change or (glisse and elapsed <= glissement)):
+                    or groupe_change or glitch_step != last_glitch
+                    or (glisse and elapsed <= glissement)):
                 overlay.draw(image.faded(level / 255))
                 montre = level
                 quart = voulu
                 etape = penche
+                last_glitch = glitch_step
             time.sleep(TICK)
     except Exception:
         pass

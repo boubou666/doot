@@ -18,7 +18,7 @@ VERSION = 2
 # produire une sortie stable avec ``doot --profiles``.
 OPTIONS = (
     "min", "max", "burst_min", "burst_max", "burst_delay", "formation",
-    "duration", "image", "no_image", "scale", "volume", "opacity",
+    "duration", "image", "no_image", "glitch", "no_glitch", "scale", "volume", "opacity",
     "font_size", "center", "no_slide", "no_melody", "melody_chance",
     "melody_pity", "slide_chance", "side", "slide_ms", "spin", "no_spin",
     "spin_chance", "spin_ms", "reverse", "no_reverse", "reverse_chance",
@@ -39,7 +39,7 @@ _NOMBRES = {
     "sound_limit", "size_min", "size_max",
 }
 _BOOLEENS = {
-    "no_image", "center", "no_slide", "no_melody", "spin", "no_spin",
+    "no_image", "glitch", "no_glitch", "center", "no_slide", "no_melody", "spin", "no_spin",
     "reverse", "no_reverse",
     "no_sound", "no_pan", "no_event", "no_contagion", "quiet",
     "reduce_motion", "no_flash", "high_contrast",

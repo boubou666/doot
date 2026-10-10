@@ -170,6 +170,57 @@ def size_gain(taille: float) -> float:
     return taille * taille
 
 
+def glitch_wav(src: Path, dest: Path) -> Path | None:
+    """Begaiements, micro-inversions et bitcrush, au rythme du rendu glitch.
+
+    Conserve duree, canaux et format PCM (8 a 32 bits). Aucun bruit ajoute :
+    le silence reste silencieux et les parasites n'amplifient pas la source.
+    """
+    from . import glitch
+
+    try:
+        with wave.open(str(src), "rb") as handle:
+            params = handle.getparams()
+            raw = handle.readframes(params.nframes)
+        channels, width, rate = params.nchannels, params.sampwidth, params.framerate
+        stride = channels * width
+        if width not in (1, 2, 3, 4) or not raw or len(raw) != params.nframes * stride:
+            return None
+        output = bytearray(raw)
+        block = max(1, rate * glitch.STEP_MS // 1000)
+        grain = max(1, rate * 24 // 1000)
+        midpoint = 128 if width == 1 else 0
+        for index in range(params.nframes):
+            step = index // block % glitch.STEPS
+            if step in (0, 4, 7):
+                continue
+            start = index // block * block
+            offset = index - start
+            available = min(grain, params.nframes - start)
+            if step == 5:
+                read = start + available - 1 - offset % available
+            elif step in (2, 3, 6):
+                read = start + (offset * (2 if step == 6 else 1)) % available
+            else:
+                read = start + offset // 4 * 4
+            gate = step == 3 and offset % grain >= grain // 2
+            quantum = 1 << max(0, width * 8 - (10 if step == 1 else 7))
+            for channel in range(channels):
+                pos = read * stride + channel * width
+                value = int.from_bytes(raw[pos:pos + width], "little", signed=width != 1) - midpoint
+                # Arrondir vers zero empeche le bitcrush d'augmenter le pic.
+                value = 0 if gate else (abs(value) // quantum * quantum) * (1 if value >= 0 else -1)
+                target = index * stride + channel * width
+                output[target:target + width] = (value + midpoint).to_bytes(width, "little", signed=width != 1)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(dest), "wb") as handle:
+            handle.setparams(params)
+            handle.writeframes(output)
+    except (OSError, EOFError, wave.Error, ValueError, OverflowError):
+        return None
+    return dest
+
+
 def size_wav(src: Path, dest: Path, taille: float, plafond: float = 1.0) -> Path | None:
     """Ecrit `src` tel que le jouerait un squelette `taille` fois plus grand.
 

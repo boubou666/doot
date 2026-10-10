@@ -415,7 +415,7 @@ def play(frame: png.Frame, x: int, y: int, duration: float,
          spins: list | None = None, spin_ms: int = 0,
          beats: list | None = None, bobs: list | None = None,
          voices: list[list] | None = None, columns: int = 1,
-         gap: int = 0) -> None:
+         gap: int = 0, glitch_effect: bool = False) -> None:
     """Fait surgir l'image sur la sortie qui contient (x, y), puis l'efface.
 
     Meme contrat que `x11.play` : leve WaylandUnavailable tant que rien n'est
@@ -427,4 +427,4 @@ def play(frame: png.Frame, x: int, y: int, duration: float,
                        output_at=(x, y))
     overlay.run(surface, frame, x, y, duration, opacity, wav_path, pan,
                 start, slide_ms, spins, spin_ms, beats, bobs,
-                voices, columns, gap)
+                voices, columns, gap, glitch_effect)
