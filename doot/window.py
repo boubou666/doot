@@ -26,7 +26,7 @@ from pathlib import Path
 
 from desktop_overlay import window as overlay_window
 
-from . import art, glitch as digital_glitch, overlay, png, screens, sound, wayland, x11
+from . import android, art, glitch as digital_glitch, overlay, png, screens, sound, wayland, x11
 
 TRANSPARENT_KEY = "#ff00ff"
 FALLBACK_BG = "#0b0b12"
@@ -275,7 +275,9 @@ def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
                taille=1.0, glitch_effect=False) -> bool:
     """Tente les overlays sans tkinter ; faux si tkinter doit prendre le relais.
 
-    Wayland passe en premier : layer-shell sait poser la surface sur la sortie
+    Android passe avant tout : hors d'une application hote il n'est jamais
+    disponible, et dedans rien d'autre ne l'est.
+    Wayland passe ensuite : layer-shell sait poser la surface sur la sortie
     voulue, ce qu'aucun client XWayland ne peut faire. Chaque backend enumere
     lui-meme ses ecrans, parce que les coordonnees doivent venir du meme espace
     que le rendu.
@@ -285,7 +287,8 @@ def _show_argb(wav_path, duration, center, opacity, image_path, scale, screen,
     """
     if image_path is None or image_path.suffix.lower() != ".png":
         return False
-    for backend, enumere in ((wayland, wayland.monitors), (x11, screens.monitors)):
+    for backend, enumere in ((android, android.monitors), (wayland, wayland.monitors),
+                             (x11, screens.monitors)):
         if _tente_overlay(backend, enumere, wav_path, duration, center, opacity,
                           image_path, scale, screen, spatialise, slide, side,
                           slide_ms, spin, spin_ms, beats, voices, reverse,
