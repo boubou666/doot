@@ -3378,9 +3378,13 @@ def sans_affichage() -> bool:
     """Aucun serveur graphique joignable : ni X11, ni Wayland.
 
     macOS et Windows dessinent sans passer par ces variables, la question ne
-    s'y pose pas.
+    s'y pose pas, pas plus que dans l'application Android.
     """
     if sys.platform in ("win32", "darwin"):
+        return False
+    from . import android
+
+    if android.available():
         return False
     return not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 

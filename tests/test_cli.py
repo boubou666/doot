@@ -1007,6 +1007,14 @@ class AucunAffichage(CliTestCase):
                         self.sans("DISPLAY", "WAYLAND_DISPLAY"):
                     self.assertFalse(cli.sans_affichage())
 
+    def test_l_application_android_dessine_sans_ces_variables(self):
+        from doot import android
+
+        with mock.patch.object(cli.sys, "platform", "linux"), \
+                self.sans("DISPLAY", "WAYLAND_DISPLAY"), \
+                mock.patch.object(android, "available", return_value=True):
+            self.assertFalse(cli.sans_affichage())
+
     def test_le_daemon_sort_en_5(self):
         with mock.patch.object(cli, "sans_affichage", lambda: True), self.boucle_interdite():
             code = self.run_cli("--ignore-season", "--quiet")
