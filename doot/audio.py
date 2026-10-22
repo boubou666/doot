@@ -28,6 +28,11 @@ import threading
 import wave
 from pathlib import Path
 
+try:
+    from desktop_overlay.audio import AndroidOutput as _AndroidOutput
+except ImportError:  # desktop-overlay < 0.3
+    _AndroidOutput = None
+
 PA_SAMPLE_S16LE = 3
 PA_STREAM_PLAYBACK = 1
 SND_PCM_STREAM_PLAYBACK = 0
@@ -180,6 +185,18 @@ class _SortieAlsa:
 
 
 _SORTIES = (_SortiePulse, _SortieAlsa)
+
+if _AndroidOutput is not None:
+    class _SortieAndroid(_AndroidOutput):
+        """AudioTrack, quand doot tourne embarque dans une application Android."""
+
+        nom = "Android AudioTrack"
+        bibliotheque = staticmethod(_AndroidOutput.library)
+
+        def __init__(self, rate: int):
+            super().__init__(rate, 2)
+
+    _SORTIES = (_SortieAndroid,) + _SORTIES
 
 
 def available() -> bool:
