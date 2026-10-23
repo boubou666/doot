@@ -48,7 +48,7 @@ public final class DootService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (daemon == null) {
+        if (daemon == null || !daemon.isAlive()) {
             daemon = run("daemon");
         }
         if (intent != null && ACTION_DOOT.equals(intent.getAction())) {

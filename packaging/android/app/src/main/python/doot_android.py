@@ -4,6 +4,7 @@ from doot import cli
 
 
 def daemon() -> int:
+    cli.release_pid_file()
     return cli.main([])
 
 
