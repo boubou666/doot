@@ -7,7 +7,7 @@ plugins {
 // (0.3 et plus). `-PdesktopOverlay=<chemin ou url pip>` en choisit un autre.
 val dootPackage = rootProject.projectDir.resolve("../../doot")
 val desktopOverlay = providers.gradleProperty("desktopOverlay").getOrElse(
-    "desktop-overlay @ git+https://github.com/boubou666/desktop-overlay@feature/android"
+    "desktop-overlay @ git+https://github.com/boubou666/desktop-overlay@3141a46422bd9d49768f90f29927961a55c07d2a"
 )
 
 android {
