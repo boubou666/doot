@@ -7,5 +7,6 @@ def daemon() -> int:
     return cli.main([])
 
 
-def once() -> int:
-    return cli.main(["--once", "--ignore-season"])
+def once(args=None) -> int:
+    """Un doot tout de suite, ou ce que demandent `args` (`--play rickroll`...)."""
+    return cli.main([str(a) for a in args] if args else ["--once", "--ignore-season"])

@@ -17,6 +17,7 @@ import com.chaquo.python.android.AndroidPlatform;
 /** Runs doot's daemon in Python, and one doot on demand. */
 public final class DootService extends Service {
     static final String ACTION_DOOT = "org.doot.android.DOOT";
+    static final String EXTRA_ARGS = "args";
     private static final String CHANNEL = "doot";
     private static final String TAG = "doot";
     private Thread daemon;
@@ -51,15 +52,15 @@ public final class DootService extends Service {
             daemon = run("daemon");
         }
         if (intent != null && ACTION_DOOT.equals(intent.getAction())) {
-            run("once");
+            run("once", (Object) intent.getStringArrayExtra(EXTRA_ARGS));
         }
         return START_STICKY;
     }
 
-    private Thread run(String entry) {
+    private Thread run(String entry, Object... args) {
         Thread thread = new Thread(() -> {
             try {
-                int code = Python.getInstance().getModule("doot_android").callAttr(entry).toInt();
+                int code = Python.getInstance().getModule("doot_android").callAttr(entry, args).toInt();
                 Log.i(TAG, entry + " exited with " + code);
             } catch (Throwable error) {
                 Log.e(TAG, entry + " failed", error);

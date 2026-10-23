@@ -8,6 +8,9 @@ import android.content.Intent;
 public final class DootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
-        DootService.start(context, intent.getAction());
+        Intent service = new Intent(context, DootService.class)
+                .setAction(intent.getAction())
+                .putExtra(DootService.EXTRA_ARGS, intent.getStringArrayExtra(DootService.EXTRA_ARGS));
+        context.startForegroundService(service);
     }
 }

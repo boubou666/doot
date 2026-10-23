@@ -197,7 +197,13 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell appops set org.doot.android SYSTEM_ALERT_WINDOW allow   # s'afficher par-dessus
 adb shell am start -n org.doot.android/.MainActivity               # ouvre la crypte
 adb shell am broadcast -a org.doot.android.DOOT -n org.doot.android/.DootReceiver   # un doot tout de suite
+adb shell am broadcast -a org.doot.android.DOOT -n org.doot.android/.DootReceiver \
+    --esa args --play,spooky-scary-skeletons,--ignore-season                           # ou ce qu'on veut
 ```
+
+`args` prend les options de la ligne de commande, séparées par des virgules.
+Sur un téléviseur, une mélodie à plusieurs voix met une vingtaine de secondes à
+se préparer avant que l'orchestre surgisse.
 
 L'application propose aussi un bouton « Doot ! ». Les succès s'inscrivent,
 mais leurs fenêtres tkinter n'existent pas sur Android ; le partage chiffré et
