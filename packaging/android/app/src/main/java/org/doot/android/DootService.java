@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.chaquo.python.PyObject;
 import com.chaquo.python.Python;
 import com.chaquo.python.android.AndroidPlatform;
 
@@ -60,8 +61,8 @@ public final class DootService extends Service {
     private Thread run(String entry, Object... args) {
         Thread thread = new Thread(() -> {
             try {
-                int code = Python.getInstance().getModule("doot_android").callAttr(entry, args).toInt();
-                Log.i(TAG, entry + " exited with " + code);
+                PyObject code = Python.getInstance().getModule("doot_android").callAttr(entry, args);
+                Log.i(TAG, entry + " exited with " + (code == null ? 0 : code.toInt()));
             } catch (Throwable error) {
                 Log.e(TAG, entry + " failed", error);
             }
