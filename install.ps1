@@ -150,9 +150,9 @@ New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
 Copy-Item (Join-Path $Src 'doot') -Destination (Join-Path $AppDir 'doot') -Recurse -Force
 Write-Item "code        : $AppDir\doot"
 
-$EngineVersion = '0.2.1'
+$EngineVersion = '0.3.0'
 $EngineUrl = "https://github.com/boubou666/desktop-overlay/releases/download/v$EngineVersion/desktop_overlay-$EngineVersion-py3-none-any.whl"
-$EngineSha256 = 'c752c46c077390a1f6cc6569dae09df302a2d0810b6a555122366be38928c972'
+$EngineSha256 = 'd9cef4b14b7a7a6dd5cca83a5bb7de1357cea25d9296dc4523d478b3112ddca6'
 $EngineInstaller = @"
 import hashlib
 import io
