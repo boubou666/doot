@@ -491,8 +491,9 @@ def bundled_sound() -> Path | None:
 def pick_sound(cache_wav: Path, custom_dir: Path, volume: float = 0.55) -> Path:
     """Son a jouer : perso d'abord, puis celui fourni, puis le jingle synthetise.
 
-    Le son fourni est un mp3 : sur les systemes sans lecteur capable de le lire
-    (Linux minimal sans mpv/ffmpeg/sox/vlc), on retombe sur le jingle wav.
+    Le son fourni est un mp3 : sans lecteur capable de le lire (Linux minimal
+    sans mpv/ffmpeg/sox/vlc, Android), son jumeau WAV passe par la sortie
+    native. Sans elle non plus, on retombe sur le jingle wav.
     """
     customs = custom_sounds(custom_dir)
     if customs:
@@ -501,6 +502,8 @@ def pick_sound(cache_wav: Path, custom_dir: Path, volume: float = 0.55) -> Path:
     default = bundled_sound()
     if default is not None and (sys.platform == "win32" or find_player(default)):
         return default
+    if BUNDLED_WAV.is_file() and audio.available():
+        return BUNDLED_WAV
 
     return ensure_wav(cache_wav, volume)
 

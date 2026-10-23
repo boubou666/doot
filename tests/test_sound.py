@@ -122,9 +122,24 @@ class ChoixDuSon(unittest.TestCase):
 
     def test_repli_synthetise_si_rien_d_autre(self):
         """Sans son perso ni son fourni lisible, on doit obtenir le WAV genere."""
-        chosen = sound.pick_sound(self.cache, self.customs, 0.55)
+        with mock.patch.object(sound.audio, "available", return_value=False):
+            chosen = sound.pick_sound(self.cache, self.customs, 0.55)
         bundled = sound.bundled_sound()
         self.assertIn(chosen, [p for p in (bundled, self.cache) if p is not None])
+
+    def test_sans_lecteur_mp3_le_jumeau_wav_passe_par_la_sortie_native(self):
+        with mock.patch.object(sound.sys, "platform", "linux"), \
+                mock.patch.object(sound, "find_player", return_value=None), \
+                mock.patch.object(sound.audio, "available", return_value=True):
+            self.assertEqual(sound.pick_sound(self.cache, self.customs, 0.55),
+                             sound.BUNDLED_WAV)
+
+    def test_sans_lecteur_ni_sortie_native_le_jingle(self):
+        with mock.patch.object(sound.sys, "platform", "linux"), \
+                mock.patch.object(sound, "find_player", return_value=None), \
+                mock.patch.object(sound.audio, "available", return_value=False):
+            self.assertEqual(sound.pick_sound(self.cache, self.customs, 0.55),
+                             self.cache)
 
 
 class SonInverse(unittest.TestCase):
