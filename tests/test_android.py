@@ -8,6 +8,7 @@ envoie, et qu'Android est essaye avant Wayland et X11.
 
 from __future__ import annotations
 
+import sys
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -100,6 +101,22 @@ class Son(unittest.TestCase):
             self.skipTest("desktop-overlay sans sortie Android")
         self.assertIs(audio._SORTIES[0], audio._SortieAndroid)
         self.assertEqual(audio._SortieAndroid.nom, "Android AudioTrack")
+
+
+class Daemon(unittest.TestCase):
+    def test_un_pid_file_trouve_au_lancement_est_libere(self):
+        entrees = Path(__file__).resolve().parents[1] / "packaging/android/app/src/main/python"
+        sys.path.insert(0, str(entrees))
+        try:
+            import doot_android
+        finally:
+            sys.path.remove(str(entrees))
+        appels = mock.Mock()
+        appels.main.return_value = 0
+        with mock.patch.object(doot_android.cli, "release_pid_file", appels.release_pid_file), \
+                mock.patch.object(doot_android.cli, "main", appels.main):
+            self.assertEqual(doot_android.daemon(), 0)
+        self.assertEqual(appels.mock_calls, [mock.call.release_pid_file(), mock.call.main([])])
 
 
 if __name__ == "__main__":
