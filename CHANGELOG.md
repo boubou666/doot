@@ -12,12 +12,23 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.35.0] - 2026-10-23
+
 ### Ajouté
 
 - doot sur Android TV : une application (`packaging/android`) embarque doot
   avec Chaquopy et Python 3.11, fait surgir le squelette par-dessus les autres
   applis et joue le doot par `AudioTrack`. Le backend `doot/android.py` passe
   avant Wayland et X11, et le daemon ne s'arrête plus faute de `DISPLAY`.
+
+### Modifié
+
+- Sans lecteur capable de lire le mp3 fourni (Linux minimal, Android), son
+  jumeau `doot.wav` passe par la sortie native au lieu du jingle synthétisé.
+- doot s'appuie sur desktop-overlay 0.3.0, qui apporte le support Android :
+  `pyproject.toml`, les installeurs, la CI et l'application Android épinglent
+  son wheel et son SHA-256 ; la recette Arch demande `python-desktop-overlay`
+  0.3.0 ou plus.
 
 ## [1.34.0] - 2026-10-10
 
@@ -952,7 +963,8 @@ ce que le code annonce.
 - Installeurs sans droits administrateur pour Windows, macOS et Linux, avec
   démarrage automatique, et un PKGBUILD pour Arch.
 
-[Non publié]: https://github.com/boubou666/doot/compare/v1.34.0...HEAD
+[Non publié]: https://github.com/boubou666/doot/compare/v1.35.0...HEAD
+[1.35.0]: https://github.com/boubou666/doot/compare/v1.34.0...v1.35.0
 [1.34.0]: https://github.com/boubou666/doot/compare/v1.33.0...v1.34.0
 [1.33.0]: https://github.com/boubou666/doot/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/boubou666/doot/compare/v1.31.0...v1.32.0

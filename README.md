@@ -213,7 +213,7 @@ le coffre, qui demandent `cryptography`, n'y sont pas disponibles.
 ### Sans installer (test rapide)
 
 ```bash
-uv run --no-project --with "desktop-overlay @ https://github.com/boubou666/desktop-overlay/releases/download/v0.2.1/desktop_overlay-0.2.1-py3-none-any.whl#sha256=c752c46c077390a1f6cc6569dae09df302a2d0810b6a555122366be38928c972" python -m doot --once --ignore-season
+uv run --no-project --with "desktop-overlay @ https://github.com/boubou666/desktop-overlay/releases/download/v0.3.0/desktop_overlay-0.3.0-py3-none-any.whl#sha256=d9cef4b14b7a7a6dd5cca83a5bb7de1357cea25d9296dc4523d478b3112ddca6" python -m doot --once --ignore-season
 ```
 
 ## 📜 Versions

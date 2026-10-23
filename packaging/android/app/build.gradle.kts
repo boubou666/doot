@@ -7,7 +7,7 @@ plugins {
 // (0.3 et plus). `-PdesktopOverlay=<chemin ou url pip>` en choisit un autre.
 val dootPackage = rootProject.projectDir.resolve("../../doot")
 val desktopOverlay = providers.gradleProperty("desktopOverlay").getOrElse(
-    "desktop-overlay @ git+https://github.com/boubou666/desktop-overlay@3141a46422bd9d49768f90f29927961a55c07d2a"
+    "desktop-overlay @ https://github.com/boubou666/desktop-overlay/releases/download/v0.3.0/desktop_overlay-0.3.0-py3-none-any.whl#sha256=d9cef4b14b7a7a6dd5cca83a5bb7de1357cea25d9296dc4523d478b3112ddca6"
 )
 
 android {
@@ -19,7 +19,7 @@ android {
         minSdk = 24
         targetSdk = 34
         versionCode = 1
-        versionName = "1.34.0"
+        versionName = "1.35.0"
         ndk {
             // Python 3.11 est le dernier que Chaquopy fournit aussi en 32 bits,
             // l'ABI de la plupart des televiseurs.

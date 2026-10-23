@@ -150,9 +150,9 @@ mkdir -p "$APP_DIR" "$BIN_DIR"
 cp -R "$SRC_DIR/doot" "$APP_DIR/doot"
 say "code        : $APP_DIR/doot"
 
-ENGINE_VERSION="0.2.1"
+ENGINE_VERSION="0.3.0"
 ENGINE_URL="https://github.com/boubou666/desktop-overlay/releases/download/v${ENGINE_VERSION}/desktop_overlay-${ENGINE_VERSION}-py3-none-any.whl"
-ENGINE_SHA256="c752c46c077390a1f6cc6569dae09df302a2d0810b6a555122366be38928c972"
+ENGINE_SHA256="d9cef4b14b7a7a6dd5cca83a5bb7de1357cea25d9296dc4523d478b3112ddca6"
 "$PYTHON" - "$ENGINE_URL" "$ENGINE_SHA256" "$APP_DIR" <<'PY'
 import hashlib
 import io

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # Le nom de distribution historique reste `spooky-doot`, meme si le projet
 # n'est plus publie sur PyPI. Le module et la commande restent `doot`.
 name = "spooky-doot"
-version = "1.34.0"
+version = "1.35.0"
 description = "Un squelette trompettiste qui surgit au hasard sur ton ecran, du 1er septembre au 31 octobre."
 readme = "README.md"
 # La CI eprouve de nouveau 3.8 : uv telecharge l'interpreteur, la ou les images
@@ -36,7 +36,7 @@ classifiers = [
     "Topic :: Games/Entertainment",
     "Topic :: Multimedia :: Graphics",
 ]
-dependencies = ["desktop-overlay @ https://github.com/boubou666/desktop-overlay/releases/download/v0.2.1/desktop_overlay-0.2.1-py3-none-any.whl#sha256=c752c46c077390a1f6cc6569dae09df302a2d0810b6a555122366be38928c972",
+dependencies = ["desktop-overlay @ https://github.com/boubou666/desktop-overlay/releases/download/v0.3.0/desktop_overlay-0.3.0-py3-none-any.whl#sha256=d9cef4b14b7a7a6dd5cca83a5bb7de1357cea25d9296dc4523d478b3112ddca6",
                 "cryptography>=42"]
 
 [project.optional-dependencies]
