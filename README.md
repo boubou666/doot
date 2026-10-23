@@ -202,7 +202,8 @@ adb shell am broadcast -a org.doot.android.DOOT -n org.doot.android/.DootReceive
 ```
 
 `args` prend les options de la ligne de commande, séparées par des virgules.
-Sur un téléviseur, une mélodie à plusieurs voix met une vingtaine de secondes à
+La diffusion exige `android.permission.DUMP` : le shell adb peut l'envoyer,
+les autres applis du téléviseur non. Sur un téléviseur, une mélodie à plusieurs voix met une vingtaine de secondes à
 se préparer avant que l'orchestre surgisse.
 
 L'application propose aussi un bouton « Doot ! ». Les succès s'inscrivent,
