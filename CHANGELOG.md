@@ -12,6 +12,13 @@ projet applique le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Ajouté
+
+- doot sur Android TV : une application (`packaging/android`) embarque doot
+  avec Chaquopy et Python 3.11, fait surgir le squelette par-dessus les autres
+  applis et joue le doot par `AudioTrack`. Le backend `doot/android.py` passe
+  avant Wayland et X11, et le daemon ne s'arrête plus faute de `DISPLAY`.
+
 ## [1.34.0] - 2026-10-10
 
 ### Ajouté

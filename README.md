@@ -177,6 +177,32 @@ Python 3.8+ est requis (`winget install -e --id Python.Python.3.12`, en cochant
 commande `doot` au PATH utilisateur et place un raccourci dans le dossier
 Démarrage. Aucun droit administrateur, aucun composant système modifié.
 
+### Android TV
+
+Android n'a ni X11 ni Wayland : doot y tourne embarqué dans une application,
+`packaging/android`, où [Chaquopy](https://chaquo.com/chaquopy/) fait tourner
+le même code Python. Le squelette surgit dans une fenêtre posée par-dessus les
+autres applis, le doot sort par `AudioTrack`, et un service au premier plan
+fait tourner le daemon, relancé au démarrage du téléviseur.
+
+Il faut un JDK 17, le SDK Android (`build-tools` 34 et `platforms;android-34`)
+et un `python3.11` dans le `PATH` : Python 3.11 est le dernier que Chaquopy
+fournit aussi en 32 bits, l'architecture de la plupart des téléviseurs.
+
+```bash
+cd packaging/android
+./gradlew assembleDebug                          # desktop-overlay pris sur GitHub
+./gradlew assembleDebug -PdesktopOverlay="$(realpath ../../../desktop-overlay)"   # ou un clone local
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell appops set org.doot.android SYSTEM_ALERT_WINDOW allow   # s'afficher par-dessus
+adb shell am start -n org.doot.android/.MainActivity               # ouvre la crypte
+adb shell am broadcast -a org.doot.android.DOOT -n org.doot.android/.DootReceiver   # un doot tout de suite
+```
+
+L'application propose aussi un bouton « Doot ! ». Les succès s'inscrivent,
+mais leurs fenêtres tkinter n'existent pas sur Android ; le partage chiffré et
+le coffre, qui demandent `cryptography`, n'y sont pas disponibles.
+
 ### Sans installer (test rapide)
 
 ```bash
